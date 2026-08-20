@@ -1,0 +1,157 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and role metadata in NextGen Class",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 255 },
+        "displayName": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "enum": ["applicant", "program_manager", "facilitator", "learner"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED", "PENDING_VERIFICATION"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "displayName", "role", "status", "createdAt", "updatedAt"]
+    },
+    "Programme": {
+      "title": "Programme",
+      "description": "Educational programme definition",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 150 },
+        "slug": { "type": "string", "maxLength": 100, "pattern": "^[a-z0-9_\\-]+$" },
+        "description": { "type": "string", "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["DRAFT", "ACTIVE", "ARCHIVED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "slug", "description", "status", "createdAt", "updatedAt"]
+    },
+    "Cohort": {
+      "title": "Cohort",
+      "description": "Time-bound cohort instance associated with a programme",
+      "type": "object",
+      "properties": {
+        "programmeId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "enum": ["UPCOMING", "APPLICATIONS_OPEN", "APPLICATIONS_CLOSED", "IN_PROGRESS", "COMPLETED", "ARCHIVED"] },
+        "startDate": { "type": "string", "maxLength": 50 },
+        "endDate": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["programmeId", "name", "status", "startDate", "endDate", "createdAt", "updatedAt"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "Application submitted by an applicant candidate",
+      "type": "object",
+      "properties": {
+        "applicantId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "programmeId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "cohortId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "status": { "type": "string", "enum": ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "SHORTLISTED", "ASSESSMENT_PENDING", "ASSESSMENT_COMPLETED", "INTERVIEW_SCHEDULED", "ADMITTED", "WAITLISTED", "REJECTED", "ENROLLED", "WITHDRAWN"] },
+        "data": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["applicantId", "programmeId", "cohortId", "status", "createdAt", "updatedAt"]
+    },
+    "Assessment": {
+      "title": "Assessment",
+      "description": "Screening test and evaluation definition",
+      "type": "object",
+      "properties": {
+        "programmeId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "durationMinutes": { "type": "number" },
+        "passPercentage": { "type": "number" },
+        "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["programmeId", "title", "description", "durationMinutes", "passPercentage", "status", "createdAt", "updatedAt"]
+    },
+    "AssessmentAttempt": {
+      "title": "AssessmentAttempt",
+      "description": "Candidate attempt for an assessment",
+      "type": "object",
+      "properties": {
+        "assessmentId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "applicantId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "status": { "type": "string", "enum": ["IN_PROGRESS", "SUBMITTED", "EXPIRED", "GRADED"] },
+        "score": { "type": "number" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["assessmentId", "applicantId", "status", "score", "startedAt", "createdAt", "updatedAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification item",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "type": { "type": "string", "enum": ["info", "success", "warning", "action_required"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "read", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable security and audit log record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "action": { "type": "string", "maxLength": 100 },
+        "resource": { "type": "string", "maxLength": 100 },
+        "resourceId": { "type": "string", "maxLength": 128 },
+        "details": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "action", "resource", "resourceId", "details", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile documents keyed by Auth UID"
+    },
+    "/programmes/{programmeId}": {
+      "schema": "Programme",
+      "description": "Master educational programme catalog"
+    },
+    "/cohorts/{cohortId}": {
+      "schema": "Cohort",
+      "description": "Programme cohort instances"
+    },
+    "/applications/{applicationId}": {
+      "schema": "Application",
+      "description": "Applicant submission records"
+    },
+    "/assessments/{assessmentId}": {
+      "schema": "Assessment",
+      "description": "Screening assessments and tests"
+    },
+    "/assessmentAttempts/{attemptId}": {
+      "schema": "AssessmentAttempt",
+      "description": "Candidate assessment submissions and scores"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Targeted notifications for users"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Immutable administrative audit event trail"
+    }
+  }
+}

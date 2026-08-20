@@ -1,0 +1,252 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Default-Deny Catch-All Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Global Security Primitives
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'ournextgenacademy@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // 3. Entity Validation Helpers
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() <= 128 && data.userId == request.auth.uid &&
+             data.email is string && data.email.size() <= 255 &&
+             data.displayName is string && data.displayName.size() <= 150 &&
+             data.role in ['applicant', 'program_manager', 'facilitator', 'learner'] &&
+             data.status in ['ACTIVE', 'SUSPENDED', 'PENDING_VERIFICATION'];
+    }
+
+    function isValidProgramme(data) {
+      return data.name is string && data.name.size() <= 150 &&
+             data.slug is string && data.slug.size() <= 100 && data.slug.matches('^[a-z0-9_\\-]+$') &&
+             data.description is string && data.description.size() <= 2000 &&
+             data.status in ['DRAFT', 'ACTIVE', 'ARCHIVED'];
+    }
+
+    function isValidCohort(data) {
+      return isValidId(data.programmeId) &&
+             data.name is string && data.name.size() <= 150 &&
+             data.status in ['UPCOMING', 'APPLICATIONS_OPEN', 'APPLICATIONS_CLOSED', 'IN_PROGRESS', 'COMPLETED', 'ARCHIVED'] &&
+             data.startDate is string && data.startDate.size() <= 50 &&
+             data.endDate is string && data.endDate.size() <= 50;
+    }
+
+    function isValidApplication(data) {
+      return isValidId(data.applicantId) && data.applicantId == request.auth.uid &&
+             isValidId(data.programmeId) &&
+             isValidId(data.cohortId) &&
+             data.status in ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SHORTLISTED', 'ASSESSMENT_PENDING', 'ASSESSMENT_COMPLETED', 'INTERVIEW_SCHEDULED', 'ADMITTED', 'WAITLISTED', 'REJECTED', 'ENROLLED', 'WITHDRAWN'];
+    }
+
+    function isValidAssessment(data) {
+      return isValidId(data.programmeId) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 2000 &&
+             data.durationMinutes is number && data.durationMinutes > 0 &&
+             data.passPercentage is number && data.passPercentage >= 0 && data.passPercentage <= 100 &&
+             data.status in ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+    }
+
+    function isValidAssessmentAttempt(data) {
+      return isValidId(data.assessmentId) &&
+             isValidId(data.applicantId) && data.applicantId == request.auth.uid &&
+             data.status in ['IN_PROGRESS', 'SUBMITTED', 'EXPIRED', 'GRADED'] &&
+             data.score is number && data.score >= 0;
+    }
+
+    function isValidNotification(data) {
+      return isValidId(data.userId) &&
+             data.title is string && data.title.size() <= 200 &&
+             data.message is string && data.message.size() <= 1000 &&
+             data.type in ['info', 'success', 'warning', 'action_required'] &&
+             data.read is bool;
+    }
+
+    function isValidAuditLog(data) {
+      return isValidId(data.userId) &&
+             data.action is string && data.action.size() <= 100 &&
+             data.resource is string && data.resource.size() <= 100 &&
+             data.resourceId is string && data.resourceId.size() <= 128 &&
+             data.details is string && data.details.size() <= 2000;
+    }
+
+    // 4. Collection Matches
+
+    // ================= USERS COLLECTION =================
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isVerified() && isOwner(userId) && isValidId(userId) &&
+                    isValidUserProfile(incoming()) &&
+                    (incoming().role == 'applicant' || isAdmin()) &&
+                    (incoming().status == 'ACTIVE' || incoming().status == 'PENDING_VERIFICATION') &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isVerified() && isValidId(userId) && isValidUserProfile(incoming()) && (
+        isAdmin() ||
+        (isOwner(userId) &&
+         incoming().userId == existing().userId &&
+         incoming().role == existing().role &&
+         incoming().status == existing().status &&
+         incoming().createdAt == existing().createdAt &&
+         incoming().updatedAt == request.time &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ================= PROGRAMMES COLLECTION =================
+    match /programmes/{programmeId} {
+      allow get, list: if isSignedIn();
+      allow create: if isVerified() && isAdmin() && isValidId(programmeId) &&
+                    isValidProgramme(incoming()) &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isVerified() && isAdmin() && isValidId(programmeId) &&
+                    isValidProgramme(incoming()) &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time;
+      allow delete: if isVerified() && isAdmin() && isValidId(programmeId);
+    }
+
+    // ================= COHORTS COLLECTION =================
+    match /cohorts/{cohortId} {
+      allow get, list: if isSignedIn();
+      allow create: if isVerified() && isAdmin() && isValidId(cohortId) &&
+                    isValidCohort(incoming()) &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isVerified() && isAdmin() && isValidId(cohortId) &&
+                    isValidCohort(incoming()) &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time;
+      allow delete: if isVerified() && isAdmin() && isValidId(cohortId);
+    }
+
+    // ================= APPLICATIONS COLLECTION =================
+    match /applications/{applicationId} {
+      allow get: if isVerified() && isValidId(applicationId) && (isAdmin() || resource.data.applicantId == request.auth.uid);
+      allow list: if isVerified() && (isAdmin() || (isSignedIn() && resource.data.applicantId == request.auth.uid));
+      allow create: if isVerified() && isValidId(applicationId) &&
+                    isValidApplication(incoming()) &&
+                    incoming().status in ['DRAFT', 'SUBMITTED'] &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isVerified() && isValidId(applicationId) && (
+        isAdmin() ||
+        (resource.data.applicantId == request.auth.uid &&
+         existing().status in ['DRAFT'] &&
+         incoming().applicantId == existing().applicantId &&
+         incoming().programmeId == existing().programmeId &&
+         incoming().cohortId == existing().cohortId &&
+         incoming().createdAt == existing().createdAt &&
+         incoming().updatedAt == request.time &&
+         incoming().status in ['DRAFT', 'SUBMITTED', 'WITHDRAWN'] &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'data', 'updatedAt']))
+      );
+      allow delete: if isVerified() && isAdmin() && isValidId(applicationId);
+    }
+
+    // ================= ASSESSMENTS COLLECTION =================
+    match /assessments/{assessmentId} {
+      allow get, list: if isSignedIn();
+      allow create: if isVerified() && isAdmin() && isValidId(assessmentId) &&
+                    isValidAssessment(incoming()) &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isVerified() && isAdmin() && isValidId(assessmentId) &&
+                    isValidAssessment(incoming()) &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time;
+      allow delete: if isVerified() && isAdmin() && isValidId(assessmentId);
+    }
+
+    // ================= ASSESSMENT ATTEMPTS COLLECTION =================
+    match /assessmentAttempts/{attemptId} {
+      allow get: if isVerified() && isValidId(attemptId) && (isAdmin() || resource.data.applicantId == request.auth.uid);
+      allow list: if isVerified() && (isAdmin() || (isSignedIn() && resource.data.applicantId == request.auth.uid));
+      allow create: if isVerified() && isValidId(attemptId) &&
+                    isValidAssessmentAttempt(incoming()) &&
+                    incoming().status == 'IN_PROGRESS' &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isVerified() && isValidId(attemptId) && (
+        isAdmin() ||
+        (resource.data.applicantId == request.auth.uid &&
+         existing().status == 'IN_PROGRESS' &&
+         incoming().applicantId == existing().applicantId &&
+         incoming().assessmentId == existing().assessmentId &&
+         incoming().createdAt == existing().createdAt &&
+         incoming().updatedAt == request.time &&
+         incoming().status in ['SUBMITTED'] &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'submittedAt', 'score', 'updatedAt']))
+      );
+      allow delete: if isVerified() && isAdmin() && isValidId(attemptId);
+    }
+
+    // ================= NOTIFICATIONS COLLECTION =================
+    match /notifications/{notificationId} {
+      allow get: if isVerified() && isValidId(notificationId) && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow list: if isVerified() && (isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid));
+      allow create: if isVerified() && (isAdmin() || (incoming().userId == request.auth.uid && isValidNotification(incoming())));
+      allow update: if isVerified() && isValidId(notificationId) && (
+        isAdmin() ||
+        (resource.data.userId == request.auth.uid &&
+         incoming().userId == existing().userId &&
+         incoming().title == existing().title &&
+         incoming().message == existing().message &&
+         incoming().type == existing().type &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['read']))
+      );
+      allow delete: if isVerified() && (isAdmin() || (resource.data.userId == request.auth.uid));
+    }
+
+    // ================= AUDIT LOGS COLLECTION =================
+    match /auditLogs/{logId} {
+      allow get, list: if isVerified() && isAdmin();
+      allow create: if isVerified() && isValidId(logId) &&
+                    isValidAuditLog(incoming()) &&
+                    incoming().userId == request.auth.uid &&
+                    incoming().createdAt == request.time;
+      allow update, delete: if false; // Immutable audit log
+    }
+
+    // ================= ADMINS COLLECTION =================
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isVerified() && isAdmin();
+    }
+  }
+}
