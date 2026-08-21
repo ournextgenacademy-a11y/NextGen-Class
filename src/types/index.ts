@@ -392,6 +392,21 @@ export interface AssessmentSubmission {
   evaluatorFeedback?: string;
 }
 
+export type CommunicationType = 
+  | 'ACCOUNT_CREATED'
+  | 'APPLICATION_SUBMITTED'
+  | 'APPLICATION_UPDATED'
+  | 'ASSESSMENT_OPENED'
+  | 'ASSESSMENT_REMINDER'
+  | 'ASSESSMENT_SUBMITTED'
+  | 'APPLICATION_ACCEPTED'
+  | 'APPLICATION_REJECTED'
+  | 'APPLICATION_WAITLISTED'
+  | 'MANUAL_BROADCAST'
+  | 'DIRECT_MESSAGE';
+
+export type DeliveryStatus = 'delivered' | 'sent' | 'pending' | 'queued' | 'failed' | 'skipped';
+
 export interface CommunicationMessage {
   id: string;
   senderId: string;
@@ -401,21 +416,52 @@ export interface CommunicationMessage {
   recipientName?: string;
   cohortId?: string; // If broadcast
   programId?: string;
-  type: 'broadcast' | 'direct' | 'system_alert' | 'offer_letter';
+  type: 'broadcast' | 'direct' | 'system_alert' | 'offer_letter' | CommunicationType;
   subject: string;
   content: string;
   sentAt: string;
   status: 'sent' | 'delivered' | 'read';
   tags?: string[];
+  templateType?: CommunicationType;
 }
 
 export interface CommunicationTemplate {
   id: string;
+  type: CommunicationType;
   name: string;
-  category: 'Assessment' | 'Interview' | 'Admissions' | 'Rejection' | 'General';
+  category: 'Account' | 'Application' | 'Assessment' | 'Admissions' | 'Interview' | 'Rejection' | 'General';
   subject: string;
   body: string;
   variables: string[];
+  enabled: boolean;
+  channels: {
+    email: boolean;
+    inApp: boolean;
+    sms: boolean;
+  };
+  description?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface CommunicationLogEntry {
+  id: string;
+  recipient: string;
+  recipientName: string;
+  recipientId?: string;
+  messageType: CommunicationType | string;
+  templateId?: string;
+  subject: string;
+  content: string;
+  date: string;
+  status: DeliveryStatus;
+  deliveryResult: string;
+  channel: 'email' | 'in_app' | 'sms' | 'multi_channel';
+  applicationId?: string;
+  cohortId?: string;
+  programId?: string;
+  assessmentId?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface LearnerRecord {

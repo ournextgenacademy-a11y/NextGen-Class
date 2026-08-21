@@ -1,5 +1,5 @@
 {
-  "name": "NextGen Class",
+  "name": "NextGen Academy",
   "description": "Scalable programme management platform for NextGen Academy powering applications, assessments, admissions, communications, and M&E reporting.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

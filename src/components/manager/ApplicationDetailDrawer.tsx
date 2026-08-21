@@ -60,7 +60,8 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
     addInternalNote,
     updateDocumentVerification,
     toggleStarApplication,
-    sendMessage 
+    sendMessage,
+    makeAdmissionDecision 
   } = useApp();
 
   const program = programs.find(p => p.id === application.programId);
@@ -97,11 +98,20 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
   const [docVerifyNote, setDocVerifyNote] = useState('');
 
   const handleStatusChangeSubmit = (newStatus: ApplicationStatus) => {
-    updateApplicationStatus(
-      application.id, 
-      newStatus, 
-      statusChangeNote || `Administrative status change to ${(newStatus || '').replace('_', ' ').toUpperCase()} by ${currentUser.name}`
-    );
+    if (newStatus === 'admitted' || newStatus === 'waitlisted' || newStatus === 'rejected') {
+      makeAdmissionDecision({
+        applicationId: application.id,
+        decision: newStatus,
+        reason: statusChangeNote || `Administrative admission decision: ${newStatus.toUpperCase()}`,
+        decidedBy: currentUser.name,
+      });
+    } else {
+      updateApplicationStatus(
+        application.id, 
+        newStatus, 
+        statusChangeNote || `Administrative status change to ${(newStatus || '').replace('_', ' ').toUpperCase()} by ${currentUser.name}`
+      );
+    }
     setStatusChangeNote('');
     setIsApplyingStatus(false);
   };

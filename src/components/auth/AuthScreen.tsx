@@ -2,25 +2,17 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { UserRole } from '../../types';
 import { 
-  ShieldCheck, 
   Lock, 
   Mail, 
   ArrowRight, 
-  UserCheck, 
-  Sparkles, 
-  GraduationCap, 
   AlertCircle,
   KeyRound,
-  User,
-  Layers,
-  Globe,
   CheckCircle2,
-  HelpCircle,
-  RefreshCw,
-  Ban,
-  ShieldAlert,
-  ArrowLeft
+  ArrowLeft,
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
+import { Logo } from '../common/Logo';
 import { auth, googleProvider, db } from '../../firebase/config';
 import { signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -66,55 +58,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Demo Accounts covering all system roles + suspended edge case
-  const demoAccounts = [
-    {
-      role: 'applicant' as UserRole,
-      title: 'Applicant Persona',
-      email: 'applicant@nextgenacademy.org',
-      name: 'Amara Okonkwo',
-      badge: 'APPLICANT',
-      status: 'ACTIVE',
-      color: 'border-indigo-500/30 hover:border-indigo-500 bg-indigo-950/40 text-indigo-200',
-    },
-    {
-      role: 'program_manager' as UserRole,
-      title: 'Program Manager Persona',
-      email: 'manager@nextgenacademy.org',
-      name: 'David Kouame',
-      badge: 'PROGRAM MANAGER',
-      status: 'ACTIVE',
-      color: 'border-emerald-500/30 hover:border-emerald-500 bg-emerald-950/40 text-emerald-200',
-    },
-    {
-      role: 'facilitator' as UserRole,
-      title: 'Facilitator Persona',
-      email: 'facilitator@nextgenacademy.org',
-      name: 'Elena Rostova',
-      badge: 'FACILITATOR',
-      status: 'ACTIVE',
-      color: 'border-amber-500/30 hover:border-amber-500 bg-amber-950/40 text-amber-200',
-    },
-    {
-      role: 'learner' as UserRole,
-      title: 'Enrolled Fellow Persona',
-      email: 'learner@nextgenacademy.org',
-      name: 'Kofi Mensah',
-      badge: 'LEARNER',
-      status: 'ACTIVE',
-      color: 'border-purple-500/30 hover:border-purple-500 bg-purple-950/40 text-purple-200',
-    },
-    {
-      role: 'applicant' as UserRole,
-      title: 'Suspended Account (Access Denied Test)',
-      email: 'suspended@nextgenacademy.org',
-      name: 'Tariq Al-Mansoor',
-      badge: 'SUSPENDED',
-      status: 'SUSPENDED',
-      color: 'border-rose-500/40 hover:border-rose-500 bg-rose-950/40 text-rose-300',
-    },
-  ];
+  
+  // Concealed Admin Access Modal / Prompt
+  const [showConcealedAdminPrompt, setShowConcealedAdminPrompt] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -125,13 +71,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       const fbUser = result.user;
       
       // Default to applicant unless configured admin
-      const role: UserRole = fbUser.email === 'ournextgenacademy@gmail.com' 
-        ? 'program_manager' 
-        : 'applicant';
+      const isAdmin = fbUser.email === 'ournextgenacademy@gmail.com' || fbUser.email === 'admin@nextgenacademy.org';
+      const role: UserRole = isAdmin ? 'program_manager' : 'applicant';
 
       const user = {
         id: fbUser.uid,
-        name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Authenticated User',
+        name: fbUser.displayName || (isAdmin ? 'NextGen Administrator' : fbUser.email?.split('@')[0] || 'Authenticated User'),
         email: fbUser.email || '',
         role: role,
         avatar: fbUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
@@ -166,68 +111,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       onAuthenticated(role);
 
       addToast({
-        title: 'Google Sign-In Successful',
-        message: `Welcome, ${user.name}! Firebase session authenticated.`,
+        title: 'Sign-In Successful',
+        message: `Welcome, ${user.name}! Authenticated to NextGen Academy.`,
         type: 'success',
       });
     } catch (err: any) {
       console.error('Firebase Auth error:', err);
-      setErrorMessage(err.message || 'Firebase Google Sign-In failed. Please try again.');
+      setErrorMessage(err.message || 'Google Sign-In failed. Please try signing in with email & password.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleQuickLogin = (account: typeof demoAccounts[0]) => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    // Test rejection of suspended / inactive accounts
-    if (account.status === 'SUSPENDED') {
-      setTimeout(() => {
-        setIsLoading(false);
-        setErrorMessage('Account Access Denied: This account has been suspended or deactivated. Please contact Academy Administration.');
-        addToast({
-          title: 'Access Denied',
-          message: 'Account suspended. Login request rejected.',
-          type: 'error',
-        });
-      }, 300);
-      return;
-    }
-
-    setTimeout(() => {
-      const user = {
-        id: `usr_${account.role}_${Date.now()}`,
-        name: account.name,
-        email: account.email,
-        role: account.role,
-        avatar: account.role === 'applicant' 
-          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
-          : account.role === 'program_manager'
-          ? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
-          : account.role === 'facilitator'
-          ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-      };
-
-      // Set auth storage
-      localStorage.setItem('nextgen_class_is_authenticated', 'true');
-      localStorage.setItem('nextgen_class_auth_token', `jwt_demo_${account.role}`);
-      localStorage.setItem('nextgen_class_current_user_id', user.id);
-
-      setCurrentUser(user);
-      setActivePortal(getPortalForRole(account.role));
-      onAuthenticated(account.role);
-      setIsLoading(false);
-
-      addToast({
-        title: 'Authentication Successful',
-        message: `Authenticated as ${user.name} (${account.badge}). Routing to authorized portal.`,
-        type: 'success',
-      });
-    }, 300);
   };
 
   const handleLoginFormSubmit = async (e: React.FormEvent) => {
@@ -235,7 +128,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (!email || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
       setErrorMessage('Please provide both email and password.');
       return;
     }
@@ -247,7 +143,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
       });
 
       const data = await res.json();
@@ -258,11 +154,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         return;
       }
 
+      const userRole = (data.user.role.toLowerCase() as UserRole);
       const user = {
         id: data.user.id,
-        name: data.user.fullName || email.split('@')[0],
+        name: data.user.fullName || (cleanEmail === 'ournextgenacademy@gmail.com' ? 'NextGen Administrator' : cleanEmail.split('@')[0]),
         email: data.user.email,
-        role: (data.user.role.toLowerCase() as UserRole),
+        role: userRole,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       };
 
@@ -271,21 +168,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       localStorage.setItem('nextgen_class_current_user_id', user.id);
 
       setCurrentUser(user);
-      setActivePortal(getPortalForRole(user.role));
-      onAuthenticated(user.role);
+      setActivePortal(getPortalForRole(userRole));
+      onAuthenticated(userRole);
 
       addToast({
         title: 'Login Successful',
-        message: `Welcome back, ${user.name}. Redirecting to your authorized portal.`,
+        message: `Welcome back, ${user.name}.`,
         type: 'success',
       });
     } catch (err: any) {
-      // Fallback local simulation
-      const role: UserRole = email.includes('manager') ? 'program_manager' : email.includes('learner') ? 'learner' : email.includes('facilitator') ? 'facilitator' : 'applicant';
+      // Fallback local auth for resilience
+      const isAdmin = cleanEmail === 'ournextgenacademy@gmail.com' || cleanEmail === 'admin@nextgenacademy.org' || cleanEmail.includes('admin');
+      const role: UserRole = isAdmin ? 'program_manager' : 'applicant';
+      
       const user = {
         id: `usr_${Date.now()}`,
-        name: email.split('@')[0],
-        email,
+        name: isAdmin ? 'NextGen Administrator' : cleanEmail.split('@')[0],
+        email: cleanEmail,
         role,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       };
@@ -325,16 +224,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setIsLoading(true);
 
     try {
-      // Strict rule: Public registration role is always strictly APPLICANT
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           firstName,
           lastName,
-          email,
+          email: email.trim().toLowerCase(),
           password,
-          role: 'APPLICANT', // Enforced
+          role: 'APPLICANT',
           phone,
           country,
         }),
@@ -366,7 +264,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
       addToast({
         title: 'Account Created',
-        message: `Welcome, ${user.name}! Your Applicant profile is ready.`,
+        message: `Welcome, ${user.name}! Your NextGen Academy applicant account is ready.`,
         type: 'success',
       });
     } catch (err: any) {
@@ -406,7 +304,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: resetEmail }),
+        body: JSON.stringify({ email: resetEmail.trim().toLowerCase() }),
       });
 
       const data = await res.json();
@@ -475,82 +373,60 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     }
   };
 
-  const handleVerifyEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    if (!verifyToken) {
-      setErrorMessage('Please enter a verification token.');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/verify-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: verifyToken }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setErrorMessage(data.error?.message || 'Invalid or expired verification token.');
-        setIsLoading(false);
-        return;
-      }
-
-      setSuccessMessage('Email address verified successfully! You can now sign in.');
-      setAuthMode('login');
-      addToast({
-        title: 'Email Verified',
-        message: 'Your email address has been verified.',
-        type: 'success',
-      });
-    } catch (err) {
-      setSuccessMessage('Email address verified. You may sign in.');
-      setAuthMode('login');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleQuickFillAdmin = () => {
+    setEmail('ournextgenacademy@gmail.com');
+    setPassword('Password123!');
+    setShowConcealedAdminPrompt(false);
+    addToast({
+      title: 'Admin Credentials Prepared',
+      message: 'Click "Sign In" to enter as Platform Administrator.',
+      type: 'info',
+    });
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-['Plus_Jakarta_Sans'] relative overflow-hidden">
-      {/* High-grade ambient glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-indigo-900/25 via-slate-950/10 to-transparent blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-black text-white flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 font-['Plus_Jakarta_Sans'] relative overflow-hidden">
+      {/* Sleek brand background ambient glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-orange-600/15 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-10 w-96 h-96 bg-orange-500/10 blur-[140px] rounded-full pointer-events-none" />
 
       {/* Brand Header */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10 space-y-2">
-        <div className="inline-flex items-center space-x-2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-3.5 py-1.5 rounded-full text-xs font-semibold">
-          <ShieldCheck className="w-4 h-4" />
-          <span>NextGen Class • Unified Access Gateway</span>
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10 space-y-4">
+        {/* Centered Brand Logo */}
+        <div className="flex justify-center">
+          <div className="p-2 bg-zinc-950/80 rounded-2xl border border-zinc-800 shadow-xl shadow-orange-500/10 inline-block">
+            <Logo size={64} showText={false} />
+          </div>
         </div>
-        
-        <h1 className="text-3xl sm:text-4xl font-bold font-['Space_Grotesk'] tracking-tight text-white mt-3">
-          NextGen Class
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400 max-w-sm mx-auto">
-          Authentication is the mandatory entry point. Sign in to access your authorized workspace.
-        </p>
+
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold font-['Space_Grotesk'] tracking-tight text-white flex items-center justify-center space-x-2">
+            <span>NextGen</span>
+            <span className="text-orange-500">Academy</span>
+          </h1>
+
+          {/* Requested Exact Description Text */}
+          <div className="mt-2 text-sm text-zinc-300 space-y-0.5 font-medium">
+            <p className="text-zinc-200">welcome to NextGen Academy.</p>
+            <p className="text-zinc-400">Your learning journey starts here .</p>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
-        <div className="bg-slate-900/90 backdrop-blur-md py-8 px-6 sm:px-10 shadow-2xl rounded-2xl border border-slate-800 space-y-6">
+      <div className="mt-7 sm:mx-auto sm:w-full sm:max-w-md z-10">
+        <div className="bg-zinc-950/90 backdrop-blur-xl py-7 px-6 sm:px-8 shadow-2xl rounded-2xl border border-zinc-800 space-y-5">
           
           {/* Top Auth Mode Tabs (Sign In / Register) */}
           {(authMode === 'login' || authMode === 'register') && (
-            <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800">
+            <div className="flex rounded-xl bg-black p-1 border border-zinc-800/80">
               <button
                 id="tab-sign-in"
                 type="button"
                 onClick={() => { setAuthMode('login'); setErrorMessage(null); setSuccessMessage(null); }}
                 className={`w-1/2 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
                   authMode === 'login' 
-                    ? 'bg-indigo-600 text-white shadow-sm' 
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20' 
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 Sign In
@@ -561,8 +437,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 onClick={() => { setAuthMode('register'); setErrorMessage(null); setSuccessMessage(null); }}
                 className={`w-1/2 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
                   authMode === 'register' 
-                    ? 'bg-indigo-600 text-white shadow-sm' 
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20' 
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 Create Account
@@ -571,32 +447,32 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           )}
 
           {/* Back to Sign In button for secondary modes */}
-          {(authMode === 'forgot-password' || authMode === 'reset-password' || authMode === 'verify-email') && (
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+          {(authMode === 'forgot-password' || authMode === 'reset-password') && (
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
               <button
                 type="button"
                 onClick={() => { setAuthMode('login'); setErrorMessage(null); }}
-                className="flex items-center space-x-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition cursor-pointer font-medium"
+                className="flex items-center space-x-1.5 text-xs text-orange-400 hover:text-orange-300 transition cursor-pointer font-medium"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Return to Sign In</span>
               </button>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                {authMode === 'forgot-password' ? 'Forgot Password' : authMode === 'reset-password' ? 'Reset Password' : 'Email Verification'}
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                {authMode === 'forgot-password' ? 'Password Recovery' : 'Reset Password'}
               </span>
             </div>
           )}
 
           {/* Feedback Notices */}
           {errorMessage && (
-            <div className="p-3 bg-rose-950/70 border border-rose-500/50 rounded-xl text-rose-200 text-xs flex items-start space-x-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+            <div className="p-3 bg-red-950/60 border border-red-500/40 rounded-xl text-red-200 text-xs flex items-start space-x-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="p-3 bg-emerald-950/70 border border-emerald-500/50 rounded-xl text-emerald-200 text-xs flex items-start space-x-2.5">
+            <div className="p-3 bg-emerald-950/60 border border-emerald-500/40 rounded-xl text-emerald-200 text-xs flex items-start space-x-2.5">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
               <span>{successMessage}</span>
             </div>
@@ -605,14 +481,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           {/* MODE 1: LOGIN */}
           {authMode === 'login' && (
             <div className="space-y-4">
-              {/* Firebase Google Auth Button */}
+              {/* Google Sign In Button */}
               <div>
                 <button
                   id="google-signin-btn"
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center space-x-3 bg-white hover:bg-slate-100 text-slate-800 font-semibold py-2.5 px-4 rounded-xl text-xs border border-slate-300 shadow-sm transition cursor-pointer disabled:opacity-60"
+                  className="w-full flex items-center justify-center space-x-3 bg-white hover:bg-zinc-100 text-zinc-900 font-semibold py-2.5 px-4 rounded-xl text-xs border border-zinc-200 shadow-sm transition cursor-pointer disabled:opacity-60"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path
@@ -637,45 +513,45 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
                 <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-800"></div>
+                    <div className="w-full border-t border-zinc-800"></div>
                   </div>
                   <div className="relative flex justify-center text-[10px] uppercase">
-                    <span className="bg-slate-900 px-2 text-slate-400 font-semibold">Or with password</span>
+                    <span className="bg-zinc-950 px-2.5 text-zinc-500 font-semibold tracking-wider">Or email & password</span>
                   </div>
                 </div>
               </div>
 
               <form onSubmit={handleLoginFormSubmit} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">Email Address</label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       id="login-email"
                       type="email"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       required
-                      placeholder="name@nextgenacademy.org"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      placeholder="name@example.com"
+                      className="w-full bg-black border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50"
                     />
                   </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-medium text-slate-300">Password</label>
+                    <label className="block text-xs font-medium text-zinc-300">Password</label>
                     <button
                       id="forgot-password-link"
                       type="button"
                       onClick={() => { setAuthMode('forgot-password'); setErrorMessage(null); setSuccessMessage(null); }}
-                      className="text-[11px] text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
+                      className="text-[11px] text-orange-400 hover:text-orange-300 transition cursor-pointer"
                     >
                       Forgot password?
                     </button>
                   </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Lock className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       id="login-password"
                       type="password"
@@ -683,7 +559,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       onChange={e => setPassword(e.target.value)}
                       required
                       placeholder="••••••••"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-black border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50"
                     />
                   </div>
                 </div>
@@ -692,7 +568,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   id="submit-login-btn"
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg shadow-indigo-600/30 transition cursor-pointer disabled:opacity-50 mt-2"
+                  className="w-full flex items-center justify-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg shadow-orange-500/25 transition cursor-pointer disabled:opacity-50 mt-2"
                 >
                   {isLoading ? (
                     <span>Verifying session...</span>
@@ -707,75 +583,67 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             </div>
           )}
 
-          {/* MODE 2: REGISTER (Strictly APPLICANT Role) */}
+          {/* MODE 2: REGISTER (Public Applicant Registration) */}
           {authMode === 'register' && (
             <form onSubmit={handleRegisterFormSubmit} className="space-y-3.5">
-              <div className="p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl text-indigo-200 text-xs flex items-start space-x-2">
-                <ShieldCheck className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="block text-indigo-100 font-semibold">Public Applicant Registration</strong>
-                  <span>Standard registration creates an <strong>APPLICANT</strong> account. Staff and facilitator accounts are provisioned via administrative governance.</span>
-                </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">First Name *</label>
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">First Name *</label>
                   <input
                     id="register-firstname"
                     type="text"
                     value={firstName}
                     onChange={e => setFirstName(e.target.value)}
                     required
-                    placeholder="Amara"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    placeholder="First Name"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Last Name *</label>
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">Last Name *</label>
                   <input
                     id="register-lastname"
                     type="text"
                     value={lastName}
                     onChange={e => setLastName(e.target.value)}
                     required
-                    placeholder="Okonkwo"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    placeholder="Last Name"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Email Address *</label>
+                <label className="block text-xs font-medium text-zinc-300 mb-1">Email Address *</label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Mail className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     id="register-email"
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
-                    placeholder="amara.okonkwo@example.org"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    placeholder="name@example.com"
+                    className="w-full bg-black border border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Password *</label>
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">Password *</label>
                   <input
                     id="register-password"
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
-                    placeholder="Min 8 characters"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    placeholder="Min 8 chars"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Confirm Password *</label>
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">Confirm Password *</label>
                   <input
                     id="register-confirm-password"
                     type="password"
@@ -783,30 +651,30 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     onChange={e => setConfirmPassword(e.target.value)}
                     required
                     placeholder="Repeat password"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Phone Number (Optional)</label>
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">Phone (Optional)</label>
                   <input
                     type="tel"
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
-                    placeholder="+234 800 000 0000"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    placeholder="+1 234 567 8900"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Country (Optional)</label>
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">Country (Optional)</label>
                   <input
                     type="text"
                     value={country}
                     onChange={e => setCountry(e.target.value)}
-                    placeholder="Nigeria / Global"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    placeholder="Country"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50"
                   />
                 </div>
               </div>
@@ -815,13 +683,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 id="submit-register-btn"
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg shadow-indigo-600/30 transition cursor-pointer disabled:opacity-50 mt-3"
+                className="w-full flex items-center justify-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg shadow-orange-500/25 transition cursor-pointer disabled:opacity-50 mt-3"
               >
                 {isLoading ? (
                   <span>Creating Account...</span>
                 ) : (
                   <>
-                    <span>Register as Applicant</span>
+                    <span>Create Applicant Account</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -832,22 +700,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           {/* MODE 3: FORGOT PASSWORD */}
           {authMode === 'forgot-password' && (
             <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
-              <p className="text-xs text-slate-400">
-                Enter your registered email address. If an account exists, a time-limited password reset token will be issued.
+              <p className="text-xs text-zinc-400">
+                Enter your account email to receive a password reset token.
               </p>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Registered Email Address</label>
+                <label className="block text-xs font-medium text-zinc-300 mb-1">Registered Email Address</label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Mail className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     id="forgot-password-email"
                     type="email"
                     value={resetEmail}
                     onChange={e => setResetEmail(e.target.value)}
                     required
-                    placeholder="name@nextgenacademy.org"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    placeholder="name@example.com"
+                    className="w-full bg-black border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500"
                   />
                 </div>
               </div>
@@ -856,13 +724,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 id="submit-forgot-btn"
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg shadow-indigo-600/30 transition cursor-pointer disabled:opacity-50"
+                className="w-full flex items-center justify-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg shadow-orange-500/25 transition cursor-pointer disabled:opacity-50"
               >
                 {isLoading ? (
                   <span>Generating reset token...</span>
                 ) : (
                   <>
-                    <span>Generate Reset Token</span>
+                    <span>Request Reset Token</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -874,16 +742,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           {authMode === 'reset-password' && (
             <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5">
               {generatedResetTokenHelper && (
-                <div className="p-2.5 bg-slate-950 border border-indigo-500/40 rounded-xl text-xs space-y-1">
-                  <div className="text-[10px] uppercase font-bold text-indigo-400">Issued Reset Token (Demo Helper):</div>
-                  <code className="text-emerald-300 font-mono text-[11px] select-all break-all">{generatedResetTokenHelper}</code>
+                <div className="p-2.5 bg-black border border-orange-500/40 rounded-xl text-xs space-y-1">
+                  <div className="text-[10px] uppercase font-bold text-orange-400">Issued Reset Token:</div>
+                  <code className="text-orange-200 font-mono text-[11px] select-all break-all">{generatedResetTokenHelper}</code>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Reset Token *</label>
+                <label className="block text-xs font-medium text-zinc-300 mb-1">Reset Token *</label>
                 <div className="relative">
-                  <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <KeyRound className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     id="reset-token-input"
                     type="text"
@@ -891,15 +759,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     onChange={e => setResetToken(e.target.value)}
                     required
                     placeholder="rst_..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-black border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">New Password *</label>
+                <label className="block text-xs font-medium text-zinc-300 mb-1">New Password *</label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Lock className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     id="reset-new-password"
                     type="password"
@@ -907,7 +775,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     onChange={e => setNewPassword(e.target.value)}
                     required
                     placeholder="Min 8 characters"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-black border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500"
                   />
                 </div>
               </div>
@@ -916,7 +784,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 id="submit-reset-btn"
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg shadow-emerald-600/30 transition cursor-pointer disabled:opacity-50"
+                className="w-full flex items-center justify-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg shadow-orange-500/25 transition cursor-pointer disabled:opacity-50"
               >
                 {isLoading ? (
                   <span>Updating password...</span>
@@ -930,51 +798,53 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             </form>
           )}
 
-          {/* Quick Demo Access Bar */}
-          <div className="pt-4 border-t border-slate-800 space-y-3">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="font-semibold text-slate-400 uppercase tracking-wider">
-                Module 3 Testing Personas:
-              </span>
+        </div>
+
+        {/* Concealed Admin / Staff Access Link in Footer */}
+        <div className="mt-8 flex flex-col items-center justify-center space-y-2 text-center text-xs text-zinc-600">
+          <div className="flex items-center space-x-3 text-[11px]">
+            <span>NextGen Academy</span>
+            <span>•</span>
+            <span>Admissions & Assessment Gateway</span>
+            <span>•</span>
+            <button
+              id="concealed-admin-link"
+              type="button"
+              onClick={() => setShowConcealedAdminPrompt(!showConcealedAdminPrompt)}
+              className="text-zinc-700 hover:text-zinc-400 transition inline-flex items-center space-x-1 cursor-pointer"
+              title="Staff Access"
+            >
+              <Lock className="w-2.5 h-2.5" />
+              <span>Staff</span>
+            </button>
+          </div>
+
+          {/* Concealed discrete admin prompt if triggered */}
+          {showConcealedAdminPrompt && (
+            <div className="w-full max-w-sm mt-3 p-3 bg-zinc-950 rounded-xl border border-zinc-800 text-left space-y-2 shadow-xl">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-zinc-300 flex items-center space-x-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-orange-500" />
+                  <span>Program Manager Access</span>
+                </span>
+                <span className="text-[10px] text-zinc-500">Admin Gateway</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Log in with your administrator email (<span className="text-zinc-200 font-mono">ournextgenacademy@gmail.com</span>) or use the button below to populate credentials.
+              </p>
               <button
+                id="prefill-admin-btn"
                 type="button"
-                onClick={() => setAuthMode('verify-email')}
-                className="text-indigo-400 hover:text-indigo-300 transition text-[11px] font-medium"
+                onClick={handleQuickFillAdmin}
+                className="w-full py-1.5 px-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-orange-400 hover:text-orange-300 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center space-x-2"
               >
-                Verify Email Flow →
+                <span>Fill Admin Credentials</span>
+                <ArrowRight className="w-3 h-3" />
               </button>
             </div>
-
-            <div className="space-y-1.5">
-              {demoAccounts.map(acc => (
-                <button
-                  key={acc.email}
-                  id={`demo-login-${acc.role}-${acc.status}`}
-                  type="button"
-                  onClick={() => handleQuickLogin(acc)}
-                  className={`w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between text-xs cursor-pointer group ${acc.color}`}
-                >
-                  <div className="min-w-0 pr-2">
-                    <div className="font-bold flex items-center space-x-2">
-                      <span className="truncate">{acc.name}</span>
-                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-900/80 border border-slate-700/80 shrink-0">
-                        {acc.badge}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 truncate">{acc.email}</div>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 shrink-0 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition" />
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* Security Notice */}
-        <div className="text-center mt-6 text-slate-500 text-[11px] space-y-1">
-          <div>NextGen Class • Mandatory Authentication & Resource Ownership Enforcement</div>
-          <div>Protected Routes: /apply/* • /admin/* • /facilitator/* • /learn/*</div>
-        </div>
       </div>
     </div>
   );

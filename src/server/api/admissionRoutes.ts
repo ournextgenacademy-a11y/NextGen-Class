@@ -17,9 +17,14 @@ admissionRoutes.post('/decision', requireAuth, requireRole(['PROGRAM_MANAGER']),
       decidedAt: new Date(),
     };
 
+    const auditAction = 
+      validated.decision === 'ACCEPTED' 
+        ? 'APPLICATION_ACCEPTED' 
+        : (validated.decision === 'WAITLISTED' ? 'APPLICATION_WAITLISTED' : 'APPLICATION_REJECTED');
+
     await logAuditEvent({
       userId: req.user?.id,
-      action: validated.decision === 'ACCEPTED' ? 'APPLICATION_ACCEPTED' : 'APPLICATION_REJECTED',
+      action: auditAction,
       entityType: 'APPLICATION',
       entityId: validated.applicationId,
       metadata: { decision: validated.decision, reason: validated.reason },

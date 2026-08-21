@@ -10,9 +10,13 @@ import {
   AssessmentSubmission, 
   CommunicationMessage, 
   CommunicationTemplate, 
+  CommunicationType,
+  CommunicationLogEntry,
+  DeliveryStatus,
   User, 
   UserRole,
   ApplicationStatus,
+  ApplicationTimelineEvent,
   RubricEvaluation,
   LearnerRecord,
   ApplicationForm,
@@ -30,9 +34,17 @@ import {
   SEED_APPLICATIONS, 
   SEED_MESSAGES, 
   SEED_TEMPLATES,
+  SEED_COMMUNICATION_LOGS,
   SEED_LEARNERS,
   SEED_APPLICATION_FORMS
 } from '../data/seedData';
+import { 
+  dispatchNotificationEvent, 
+  interpolateVariables, 
+  NotificationContext, 
+  DEFAULT_COMMUNICATION_TEMPLATES,
+  TEMPLATE_VARIABLES 
+} from '../notifications/notificationService';
 import { validateAndParseFormCsv } from '../utils/formCsvParser';
 import confetti from 'canvas-confetti';
 
@@ -127,15 +139,57 @@ interface AppContextType {
   addAssessmentResource: (assessmentId: string, resource: Omit<AssessmentResource, 'id' | 'uploadedAt'>) => void;
   removeAssessmentResource: (assessmentId: string, resourceId: string) => void;
   submitAssessment: (submission: Omit<AssessmentSubmission, 'id' | 'submittedAt'>) => AssessmentSubmission;
+  gradeAssessmentSubmission: (params: {
+    submissionId?: string;
+    applicationId: string;
+    assessmentId: string;
+    questionScores: Record<string, number>;
+    evaluatorFeedback?: string;
+    passed?: boolean;
+  }) => void;
   
-  // Communications
+  // Communications & Notifications (Module 10)
   messages: CommunicationMessage[];
   templates: CommunicationTemplate[];
+  communicationLogs: CommunicationLogEntry[];
   sendMessage: (msg: Omit<CommunicationMessage, 'id' | 'sentAt' | 'status'>) => void;
   broadcastToCohort: (cohortId: string, subject: string, content: string, tags?: string[]) => void;
   saveTemplate: (template: CommunicationTemplate) => void;
+  toggleTemplateAutomation: (templateIdOrType: string, enabled?: boolean) => void;
+  resetTemplatesToDefault: () => void;
+  clearCommunicationLogs: () => void;
+  resendCommunication: (logId: string) => Promise<boolean>;
+  triggerNotification: (
+    type: CommunicationType,
+    context: NotificationContext,
+    options?: {
+      forceSend?: boolean;
+      customSubject?: string;
+      customBody?: string;
+      channelsOverride?: { email: boolean; inApp: boolean; sms: boolean };
+      sender?: { id: string; name: string; role: UserRole };
+    }
+  ) => Promise<{ dispatched: boolean; reason?: string; log?: CommunicationLogEntry }>;
+  broadcastManualMessage: (params: {
+    targetAudience: 'all' | 'cohort' | 'status' | 'individual';
+    cohortId?: string;
+    statusFilter?: string;
+    individualApplicantId?: string;
+    templateId?: string;
+    subject: string;
+    content: string;
+    channels: { email: boolean; inApp: boolean; sms: boolean };
+    tags?: string[];
+  }) => Promise<{ success: boolean; dispatchedCount: number }>;
+  broadcastMessage?: any;
   
   // Admissions & Learner Transition
+  makeAdmissionDecision: (params: {
+    applicationId: string;
+    decision: 'ACCEPTED' | 'REJECTED' | 'WAITLISTED' | 'admitted' | 'rejected' | 'waitlisted';
+    reason?: string;
+    decidedBy?: string;
+  }) => void;
   acceptAdmissionOffer: (applicationId: string) => void;
   learners: LearnerRecord[];
   
@@ -151,17 +205,18 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  USERS: 'nextgen_class_users_v1',
-  CURRENT_USER_ID: 'nextgen_class_current_user_v1',
-  PROGRAMS: 'nextgen_class_programs_v1',
-  COHORTS: 'nextgen_class_cohorts_v1',
-  APPLICATIONS: 'nextgen_class_applications_v1',
-  ASSESSMENTS: 'nextgen_class_assessments_v1',
-  SUBMISSIONS: 'nextgen_class_submissions_v1',
-  MESSAGES: 'nextgen_class_messages_v1',
-  TEMPLATES: 'nextgen_class_templates_v1',
-  LEARNERS: 'nextgen_class_learners_v1',
-  FORMS: 'nextgen_class_forms_v1',
+  USERS: 'nextgen_class_users_v2',
+  CURRENT_USER_ID: 'nextgen_class_current_user_v2',
+  PROGRAMS: 'nextgen_class_programs_v2',
+  COHORTS: 'nextgen_class_cohorts_v2',
+  APPLICATIONS: 'nextgen_class_applications_v2',
+  ASSESSMENTS: 'nextgen_class_assessments_v2',
+  SUBMISSIONS: 'nextgen_class_submissions_v2',
+  MESSAGES: 'nextgen_class_messages_v2',
+  TEMPLATES: 'nextgen_class_templates_v2',
+  COMMUNICATION_LOGS: 'nextgen_class_comm_logs_v2',
+  LEARNERS: 'nextgen_class_learners_v2',
+  FORMS: 'nextgen_class_forms_v2',
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -233,6 +288,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : SEED_TEMPLATES;
   });
 
+  const [communicationLogs, setCommunicationLogs] = useState<CommunicationLogEntry[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.COMMUNICATION_LOGS);
+    return saved ? JSON.parse(saved) : SEED_COMMUNICATION_LOGS;
+  });
+
   const [learners, setLearners] = useState<LearnerRecord[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.LEARNERS);
     return saved ? JSON.parse(saved) : SEED_LEARNERS;
@@ -274,6 +334,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [templates]);
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.COMMUNICATION_LOGS, JSON.stringify(communicationLogs));
+  }, [communicationLogs]);
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LEARNERS, JSON.stringify(learners));
   }, [learners]);
 
@@ -308,6 +372,287 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `Now operating with ${((role as string) || '').replace('_', ' ').toUpperCase()} credentials.`,
       type: 'info',
     });
+  };
+
+  // ==========================================
+  // MODULE 10: COMMUNICATIONS & NOTIFICATIONS
+  // ==========================================
+  const sendMessage = (msgData: Omit<CommunicationMessage, 'id' | 'sentAt' | 'status'>) => {
+    const newMsg: CommunicationMessage = {
+      ...msgData,
+      id: 'msg-' + Date.now(),
+      sentAt: new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
+      status: 'delivered',
+    };
+    setMessages(prev => [newMsg, ...prev]);
+  };
+
+  const triggerNotification = async (
+    type: CommunicationType,
+    context: NotificationContext,
+    options?: {
+      forceSend?: boolean;
+      customSubject?: string;
+      customBody?: string;
+      channelsOverride?: { email: boolean; inApp: boolean; sms: boolean };
+      sender?: { id: string; name: string; role: UserRole };
+    }
+  ): Promise<{ dispatched: boolean; reason?: string; log?: CommunicationLogEntry }> => {
+    const result = await dispatchNotificationEvent({
+      type,
+      templates,
+      context,
+      forceSend: options?.forceSend,
+      customSubject: options?.customSubject,
+      customBody: options?.customBody,
+      channelsOverride: options?.channelsOverride,
+      sender: options?.sender || {
+        id: currentUser.id,
+        name: currentUser.name || 'NextGen Admissions Desk',
+        role: currentUser.role,
+      },
+    });
+
+    if (result.log) {
+      setCommunicationLogs(prev => [result.log!, ...prev]);
+    }
+    if (result.inAppMessage) {
+      setMessages(prev => [result.inAppMessage!, ...prev]);
+    }
+
+    return result;
+  };
+
+  const toggleTemplateAutomation = (templateIdOrType: string, enabled?: boolean) => {
+    setTemplates(prev => prev.map(t => {
+      if (t.id === templateIdOrType || t.type === templateIdOrType) {
+        const newEnabled = enabled !== undefined ? enabled : !t.enabled;
+        return {
+          ...t,
+          enabled: newEnabled,
+          updatedAt: new Date().toISOString(),
+          updatedBy: currentUser.name,
+        };
+      }
+      return t;
+    }));
+
+    const target = templates.find(t => t.id === templateIdOrType || t.type === templateIdOrType);
+    const willBeEnabled = enabled !== undefined ? enabled : !target?.enabled;
+    addToast({
+      title: willBeEnabled ? 'Automation Enabled ⚡' : 'Automation Paused ⏸️',
+      message: `Automated messaging for "${target?.name || templateIdOrType}" is now ${willBeEnabled ? 'ACTIVE' : 'MUTED'}.`,
+      type: willBeEnabled ? 'success' : 'info',
+    });
+  };
+
+  const saveTemplate = (template: CommunicationTemplate) => {
+    setTemplates(prev => {
+      const idx = prev.findIndex(t => t.id === template.id || t.type === template.type);
+      const updatedTemplate: CommunicationTemplate = {
+        ...template,
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser.name,
+      };
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = updatedTemplate;
+        return next;
+      }
+      return [...prev, updatedTemplate];
+    });
+    addToast({
+      title: 'Template Saved ✉️',
+      message: `"${template.name}" updated successfully.`,
+      type: 'success',
+    });
+  };
+
+  const resetTemplatesToDefault = () => {
+    setTemplates(DEFAULT_COMMUNICATION_TEMPLATES);
+    addToast({
+      title: 'Templates Restored',
+      message: 'Restored all 9 standard communication templates to baseline configuration.',
+      type: 'info',
+    });
+  };
+
+  const clearCommunicationLogs = () => {
+    setCommunicationLogs([]);
+    addToast({
+      title: 'Audit Logs Cleared',
+      message: 'Notification event dispatch history has been cleared.',
+      type: 'info',
+    });
+  };
+
+  const resendCommunication = async (logId: string): Promise<boolean> => {
+    const targetLog = communicationLogs.find(l => l.id === logId);
+    if (!targetLog) return false;
+
+    const res = await triggerNotification(
+      targetLog.messageType as CommunicationType,
+      {
+        applicant: {
+          id: targetLog.recipientId,
+          fullName: targetLog.recipientName,
+          email: targetLog.recipient,
+        },
+        application: targetLog.applicationId ? applications.find(a => a.id === targetLog.applicationId) : undefined,
+        cohort: targetLog.cohortId ? cohorts.find(c => c.id === targetLog.cohortId) : undefined,
+        programme: targetLog.programId ? programs.find(p => p.id === targetLog.programId) : undefined,
+        assessment: targetLog.assessmentId ? assessments.find(a => a.id === targetLog.assessmentId) : undefined,
+      },
+      {
+        forceSend: true,
+        customSubject: targetLog.subject,
+        customBody: targetLog.content,
+      }
+    );
+
+    if (res.dispatched) {
+      addToast({
+        title: 'Notification Re-dispatched 🚀',
+        message: `Successfully re-sent "${targetLog.subject}" to ${targetLog.recipient}.`,
+        type: 'success',
+      });
+      return true;
+    }
+    return false;
+  };
+
+  const broadcastToCohort = (cohortId: string, subject: string, content: string, tags?: string[]) => {
+    const targetCohort = cohorts.find(c => c.id === cohortId);
+    const targetProgram = programs.find(p => p.id === targetCohort?.programId);
+
+    const newBroadcast: CommunicationMessage = {
+      id: 'msg-bc-' + Date.now(),
+      senderId: currentUser.id,
+      senderName: currentUser.name,
+      senderRole: currentUser.role,
+      cohortId,
+      programId: targetProgram?.id,
+      type: 'broadcast',
+      templateType: 'MANUAL_BROADCAST',
+      subject,
+      content,
+      sentAt: new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
+      status: 'sent',
+      tags: tags || ['Cohort Broadcast'],
+    };
+
+    setMessages(prev => [newBroadcast, ...prev]);
+    addToast({
+      title: 'Cohort Broadcast Dispatched 📣',
+      message: `Delivered to candidates in ${targetCohort?.name || 'cohort'}.`,
+      type: 'success',
+    });
+  };
+
+  const broadcastManualMessage = async (params: {
+    targetAudience: 'all' | 'cohort' | 'status' | 'individual';
+    cohortId?: string;
+    statusFilter?: string;
+    individualApplicantId?: string;
+    templateId?: string;
+    subject: string;
+    content: string;
+    channels: { email: boolean; inApp: boolean; sms: boolean };
+    tags?: string[];
+  }): Promise<{ success: boolean; dispatchedCount: number }> => {
+    const { targetAudience, cohortId, statusFilter, individualApplicantId, subject, content, channels, tags } = params;
+
+    let eligibleApps = applications.filter(a => a.status !== 'draft');
+
+    if (targetAudience === 'individual' && individualApplicantId) {
+      eligibleApps = applications.filter(a => a.applicantId === individualApplicantId || a.id === individualApplicantId);
+    } else {
+      if (cohortId && cohortId !== 'all') {
+        eligibleApps = eligibleApps.filter(a => a.cohortId === cohortId);
+      }
+      if (statusFilter && statusFilter !== 'all') {
+        eligibleApps = eligibleApps.filter(a => a.status === statusFilter);
+      }
+    }
+
+    if (eligibleApps.length === 0) {
+      addToast({
+        title: 'No Recipients Found',
+        message: 'No candidates matched the specified audience filter.',
+        type: 'warning',
+      });
+      return { success: false, dispatchedCount: 0 };
+    }
+
+    let count = 0;
+    for (const app of eligibleApps) {
+      const coh = cohorts.find(c => c.id === app.cohortId);
+      const prog = programs.find(p => p.id === app.programId);
+      const targetAsm = assessments.find(a => a.cohortId === app.cohortId);
+
+      const ctx: NotificationContext = {
+        applicant: {
+          id: app.applicantId,
+          fullName: app.fullName,
+          email: app.email,
+          phone: app.phone,
+        },
+        application: app,
+        cohort: coh,
+        programme: prog,
+        assessment: targetAsm,
+        deadline: coh?.applicationDeadline || 'September 15, 2026',
+      };
+
+      await triggerNotification('MANUAL_BROADCAST', ctx, {
+        forceSend: true,
+        customSubject: subject,
+        customBody: content,
+        channelsOverride: channels,
+      });
+      count++;
+    }
+
+    const targetCohort = cohortId && cohortId !== 'all' ? cohorts.find(c => c.id === cohortId) : undefined;
+    const targetProg = targetCohort ? programs.find(p => p.id === targetCohort.programId) : undefined;
+
+    const newBroadcastMsg: CommunicationMessage = {
+      id: 'msg-bc-' + Date.now(),
+      senderId: currentUser.id,
+      senderName: currentUser.name,
+      senderRole: currentUser.role,
+      cohortId: cohortId === 'all' ? undefined : cohortId,
+      programId: targetProg?.id,
+      type: 'broadcast',
+      templateType: 'MANUAL_BROADCAST',
+      subject: interpolateVariables(subject, {
+        applicant: { fullName: eligibleApps[0]?.fullName },
+        cohort: targetCohort,
+        programme: targetProg,
+      }),
+      content: interpolateVariables(content, {
+        applicant: { fullName: eligibleApps[0]?.fullName },
+        cohort: targetCohort,
+        programme: targetProg,
+      }),
+      sentAt: new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
+      status: 'sent',
+      tags: tags || ['Broadcast', `${count} Recipients`],
+    };
+    setMessages(prev => [newBroadcastMsg, ...prev]);
+
+    const activeChannels = Object.entries(channels)
+      .filter(([_, v]) => v)
+      .map(([k]) => k.toUpperCase())
+      .join(' & ');
+
+    addToast({
+      title: 'Broadcast Dispatched 🚀',
+      message: `Delivered to ${count} candidate(s) via ${activeChannels || 'Inbox'}.`,
+      type: 'success',
+    });
+
+    return { success: true, dispatchedCount: count };
   };
 
   // Programme operations
@@ -961,6 +1306,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         next[existingIndex] = draftApp;
         return next;
       });
+
+      // Dispatch automated APPLICATION_UPDATED notification
+      const prog = programs.find(p => p.id === draftApp.programId);
+      const coh = cohorts.find(c => c.id === draftApp.cohortId);
+      triggerNotification('APPLICATION_UPDATED', {
+        applicant: {
+          id: currentUser.id,
+          fullName: draftApp.fullName,
+          email: draftApp.email,
+        },
+        application: draftApp,
+        cohort: coh,
+        programme: prog,
+      });
     } else {
       setApplications(prev => [draftApp, ...prev]);
     }
@@ -1053,6 +1412,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setApplications(prev => [newApp, ...prev]);
     }
 
+    const prog = programs.find(p => p.id === newApp.programId);
+    const coh = cohorts.find(c => c.id === newApp.cohortId);
+    const targetAsm = assessments.find(a => a.cohortId === newApp.cohortId);
+
+    // Automated Trigger: APPLICATION_SUBMITTED
+    triggerNotification('APPLICATION_SUBMITTED', {
+      applicant: {
+        id: currentUser.id,
+        fullName: newApp.fullName,
+        email: newApp.email,
+        phone: newApp.phone,
+      },
+      application: newApp,
+      cohort: coh,
+      programme: prog,
+      assessment: targetAsm,
+      deadline: coh?.applicationDeadline || 'September 15, 2026',
+    });
+
     // 1. Send confirmation system message to applicant
     sendMessage({
       senderId: 'system',
@@ -1068,8 +1446,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     // 2. Send notification message to Program Manager
-    const prog = programs.find(p => p.id === newApp.programId);
-    const coh = cohorts.find(c => c.id === newApp.cohortId);
     sendMessage({
       senderId: currentUser.id,
       senderName: currentUser.name,
@@ -1505,6 +1881,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateAssessmentStatus = (assessmentId: string, status: AssessmentStatus) => {
+    const targetAssessment = assessments.find(a => a.id === assessmentId);
+
     setAssessments(prev => prev.map(a => {
       if (a.id !== assessmentId) return a;
       return {
@@ -1514,6 +1892,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatedAt: new Date().toISOString(),
       };
     }));
+
+    // If assessment is opened or published, trigger automated ASSESSMENT_OPENED for applicants in the cohort
+    if ((status === 'open' || status === 'published') && targetAssessment) {
+      const cohortApplicants = applications.filter(a => a.cohortId === targetAssessment.cohortId && a.status !== 'draft');
+      const coh = cohorts.find(c => c.id === targetAssessment.cohortId);
+      const prog = programs.find(p => p.id === coh?.programId);
+
+      cohortApplicants.forEach(app => {
+        triggerNotification('ASSESSMENT_OPENED', {
+          applicant: {
+            id: app.applicantId,
+            fullName: app.fullName,
+            email: app.email,
+          },
+          application: app,
+          cohort: coh,
+          programme: prog,
+          assessment: targetAssessment,
+          deadline: targetAssessment.closeDate || coh?.assessmentDeadline || 'September 10, 2026',
+        });
+      });
+    }
 
     const statusLabels: Record<AssessmentStatus, string> = {
       draft: 'saved as Draft',
@@ -1605,6 +2005,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }));
 
+    // Trigger automated ASSESSMENT_SUBMITTED notification event
+    const targetApp = applications.find(a => a.id === submission.applicationId);
+    const targetAsm = assessments.find(a => a.id === submission.assessmentId);
+    const coh = cohorts.find(c => c.id === targetApp?.cohortId);
+    const prog = programs.find(p => p.id === targetApp?.programId);
+
+    triggerNotification('ASSESSMENT_SUBMITTED', {
+      applicant: {
+        id: targetApp?.applicantId || currentUser.id,
+        fullName: targetApp?.fullName || currentUser.name,
+        email: targetApp?.email || currentUser.email,
+      },
+      application: targetApp,
+      cohort: coh,
+      programme: prog,
+      assessment: targetAsm,
+      customData: {
+        assessment_score: Math.round(submission.percentageScore),
+      }
+    });
+
     addToast({
       title: 'Assessment Graded',
       message: `Your score: ${Math.round(submission.percentageScore)}%. Results recorded!`,
@@ -1614,59 +2035,241 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return submission;
   };
 
-  // Communications
-  const sendMessage = (msgData: Omit<CommunicationMessage, 'id' | 'sentAt' | 'status'>) => {
-    const newMsg: CommunicationMessage = {
-      ...msgData,
-      id: 'msg-' + Date.now(),
-      sentAt: new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
-      status: 'delivered',
-    };
-    setMessages(prev => [newMsg, ...prev]);
-  };
+  const gradeAssessmentSubmission = (params: {
+    submissionId?: string;
+    applicationId: string;
+    assessmentId: string;
+    questionScores: Record<string, number>;
+    evaluatorFeedback?: string;
+    passed?: boolean;
+  }) => {
+    const { submissionId, applicationId, assessmentId, questionScores, evaluatorFeedback, passed } = params;
+    const targetAssessment = assessments.find(a => a.id === assessmentId);
+    const targetApp = applications.find(a => a.id === applicationId);
 
-  const broadcastToCohort = (cohortId: string, subject: string, content: string, tags?: string[]) => {
-    const targetCohort = cohorts.find(c => c.id === cohortId);
-    const targetProgram = programs.find(p => p.id === targetCohort?.programId);
+    // Compute raw, max, and percentage scores
+    const rawScore = Object.values(questionScores).reduce((sum, val) => sum + (Number(val) || 0), 0);
+    const maxScore = targetAssessment?.questions.reduce((sum, q) => sum + (q.points || 0), 0) || 100;
+    const percentage = Math.min(100, Math.max(0, Math.round((rawScore / maxScore) * 100)));
+    const passingBenchmark = targetAssessment?.passingScore || 70;
+    const isPassed = passed !== undefined ? passed : percentage >= passingBenchmark;
 
-    const newBroadcast: CommunicationMessage = {
-      id: 'msg-bc-' + Date.now(),
-      senderId: currentUser.id,
-      senderName: currentUser.name,
-      senderRole: currentUser.role,
-      cohortId,
-      programId: targetProgram?.id,
-      type: 'broadcast',
-      subject,
-      content,
-      sentAt: new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
-      status: 'sent',
-      tags: tags || ['Broadcast'],
-    };
+    // 1. Update or insert assessment submission
+    setAssessmentSubmissions(prev => {
+      const existingIdx = prev.findIndex(s => 
+        (submissionId && s.id === submissionId) || 
+        (s.applicationId === applicationId && s.assessmentId === assessmentId)
+      );
 
-    setMessages(prev => [newBroadcast, ...prev]);
-    addToast({
-      title: 'Broadcast Dispatched',
-      message: `Sent to all candidates in ${targetCohort?.name || 'cohort'}.`,
-      type: 'success',
-    });
-  };
+      const updatedSub: AssessmentSubmission = {
+        id: submissionId || (existingIdx >= 0 ? prev[existingIdx].id : 'sub-' + Date.now()),
+        assessmentId,
+        applicationId,
+        applicantId: targetApp?.applicantId || 'applicant',
+        answers: existingIdx >= 0 ? prev[existingIdx].answers : {},
+        score: rawScore,
+        maxScore,
+        percentageScore: percentage,
+        passed: isPassed,
+        submittedAt: existingIdx >= 0 ? prev[existingIdx].submittedAt : new Date().toISOString(),
+        timeTakenMinutes: existingIdx >= 0 ? prev[existingIdx].timeTakenMinutes : 25,
+        evaluatorFeedback,
+      };
 
-  const saveTemplate = (template: CommunicationTemplate) => {
-    setTemplates(prev => {
-      const idx = prev.findIndex(t => t.id === template.id);
-      if (idx >= 0) {
+      if (existingIdx >= 0) {
         const next = [...prev];
-        next[idx] = template;
+        next[existingIdx] = updatedSub;
         return next;
       }
-      return [...prev, template];
+      return [updatedSub, ...prev];
     });
-    addToast({
-      title: 'Template Saved',
-      message: `"${template.name}" is ready for broadcasts.`,
-      type: 'success',
-    });
+
+    // 2. Update application assessment score and audit timeline
+    setApplications(prev => prev.map(app => {
+      if (app.id !== applicationId) return app;
+
+      const timelineEvent: ApplicationTimelineEvent = {
+        id: 't-grade-' + Date.now(),
+        title: 'Assessment Graded & Evaluated',
+        description: `Assessment score: ${rawScore}/${maxScore} pts (${percentage}%). Result: ${isPassed ? 'PASSED' : 'NEEDS REVIEW'}.${evaluatorFeedback ? ` Evaluator Feedback: "${evaluatorFeedback}"` : ''}`,
+        timestamp: new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' }),
+        actor: currentUser.name,
+        type: 'assessment',
+      };
+
+      return {
+        ...app,
+        assessmentScore: percentage,
+        status: app.status === 'admitted' || app.status === 'accepted' || app.status === 'rejected' || app.status === 'enrolled' 
+          ? app.status 
+          : 'assessment_completed',
+        timeline: [timelineEvent, ...app.timeline],
+      };
+    }));
+  };
+
+  // Admissions & Decisions
+  const makeAdmissionDecision = (params: {
+    applicationId: string;
+    decision: 'ACCEPTED' | 'REJECTED' | 'WAITLISTED' | 'admitted' | 'rejected' | 'waitlisted';
+    reason?: string;
+    decidedBy?: string;
+  }) => {
+    const { applicationId, decision, reason, decidedBy } = params;
+    const targetApp = applications.find(a => a.id === applicationId);
+    if (!targetApp) return;
+
+    const decUpper = String(decision).toUpperCase();
+    const normalizedDecision: ApplicationStatus = 
+      decUpper === 'ACCEPTED' || decUpper === 'ADMITTED'
+        ? 'admitted'
+        : decUpper === 'WAITLISTED'
+        ? 'waitlisted'
+        : 'rejected';
+
+    const decisionMakerName = decidedBy || currentUser.name || 'Admissions Committee';
+    const timestampStr = new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' });
+    const today = new Date().toISOString().split('T')[0];
+
+    // 1. Update Application Status & Timeline
+    setApplications(prev => prev.map(app => {
+      if (app.id !== applicationId) return app;
+
+      const timelineEvent: ApplicationTimelineEvent = {
+        id: 't-adm-' + Date.now(),
+        title: `Admissions Decision: ${normalizedDecision.toUpperCase()}`,
+        description: `${reason ? `Reason: ${reason} • ` : ''}Decision rendered by ${decisionMakerName} on ${timestampStr}.`,
+        timestamp: timestampStr,
+        actor: decisionMakerName,
+        type: 'admissions',
+      };
+
+      return {
+        ...app,
+        status: normalizedDecision,
+        offerLetterSentDate: normalizedDecision === 'admitted' ? today : app.offerLetterSentDate,
+        scholarshipAwarded: normalizedDecision === 'admitted' ? true : app.scholarshipAwarded,
+        scholarshipPercentage: normalizedDecision === 'admitted' ? 100 : app.scholarshipPercentage,
+        timeline: [timelineEvent, ...app.timeline],
+      };
+    }));
+
+    // 2. When ACCEPTED: Prepare applicant for future learner enrolment & create learner record according to defined transition workflow
+    if (normalizedDecision === 'admitted') {
+      const newLearner: LearnerRecord = {
+        id: 'lrn-' + Date.now(),
+        applicantId: targetApp.applicantId,
+        applicationId: targetApp.id,
+        cohortId: targetApp.cohortId,
+        programId: targetApp.programId,
+        fullName: targetApp.fullName,
+        email: targetApp.email,
+        enrollmentDate: today,
+        attendanceRate: 100,
+        completedModules: 0,
+        totalModules: 8,
+        capstoneStatus: 'not_started',
+        currentGrade: 100,
+        certificateStatus: 'pending',
+      };
+
+      setLearners(prev => {
+        const exists = prev.some(l => l.applicantId === targetApp.applicantId && l.cohortId === targetApp.cohortId);
+        if (exists) return prev;
+        return [newLearner, ...prev];
+      });
+
+      // Update cohort admitted counts
+      setCohorts(prev => prev.map(c => {
+        if (c.id !== targetApp.cohortId) return c;
+        return {
+          ...c,
+          admittedCount: (c.admittedCount || 0) + 1,
+        };
+      }));
+
+      const prog = programs.find(p => p.id === targetApp.programId);
+      const coh = cohorts.find(c => c.id === targetApp.cohortId);
+      const targetAsm = assessments.find(a => a.cohortId === targetApp.cohortId);
+
+      // Automated Trigger: APPLICATION_ACCEPTED
+      triggerNotification('APPLICATION_ACCEPTED', {
+        applicant: {
+          id: targetApp.applicantId,
+          fullName: targetApp.fullName,
+          email: targetApp.email,
+          phone: targetApp.phone,
+        },
+        application: targetApp,
+        cohort: coh,
+        programme: prog,
+        assessment: targetAsm,
+        deadline: coh?.startDate || 'October 1, 2026',
+        customData: {
+          admissions_reason: reason,
+        }
+      });
+
+      addToast({
+        title: 'Candidate Accepted! 🎓',
+        message: `${targetApp.fullName} is admitted. Learner profile initialized for enrolment.`,
+        type: 'success',
+      });
+    } else if (normalizedDecision === 'waitlisted') {
+      const prog = programs.find(p => p.id === targetApp.programId);
+      const coh = cohorts.find(c => c.id === targetApp.cohortId);
+      const targetAsm = assessments.find(a => a.cohortId === targetApp.cohortId);
+
+      // Automated Trigger: APPLICATION_WAITLISTED
+      triggerNotification('APPLICATION_WAITLISTED', {
+        applicant: {
+          id: targetApp.applicantId,
+          fullName: targetApp.fullName,
+          email: targetApp.email,
+          phone: targetApp.phone,
+        },
+        application: targetApp,
+        cohort: coh,
+        programme: prog,
+        assessment: targetAsm,
+        customData: {
+          admissions_reason: reason,
+        }
+      });
+
+      addToast({
+        title: 'Candidate Waitlisted ⏳',
+        message: `${targetApp.fullName} has been placed on the priority waitlist.`,
+        type: 'info',
+      });
+    } else {
+      const prog = programs.find(p => p.id === targetApp.programId);
+      const coh = cohorts.find(c => c.id === targetApp.cohortId);
+      const targetAsm = assessments.find(a => a.cohortId === targetApp.cohortId);
+
+      // Automated Trigger: APPLICATION_REJECTED
+      triggerNotification('APPLICATION_REJECTED', {
+        applicant: {
+          id: targetApp.applicantId,
+          fullName: targetApp.fullName,
+          email: targetApp.email,
+          phone: targetApp.phone,
+        },
+        application: targetApp,
+        cohort: coh,
+        programme: prog,
+        assessment: targetAsm,
+        customData: {
+          admissions_reason: reason,
+        }
+      });
+
+      addToast({
+        title: 'Application Rejected',
+        message: `Decision recorded for ${targetApp.fullName}.`,
+        type: 'info',
+      });
+    }
   };
 
   // Admissions & Learner Transition
@@ -1773,6 +2376,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAssessmentSubmissions([]);
     setMessages(SEED_MESSAGES);
     setTemplates(SEED_TEMPLATES);
+    setCommunicationLogs(SEED_COMMUNICATION_LOGS);
     setLearners(SEED_LEARNERS);
     setForms(SEED_APPLICATION_FORMS);
     setCurrentUser(SEED_USERS[0]);
@@ -1857,11 +2461,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addAssessmentResource,
         removeAssessmentResource,
         submitAssessment,
+        gradeAssessmentSubmission,
         messages,
         templates,
+        communicationLogs,
         sendMessage,
         broadcastToCohort,
         saveTemplate,
+        toggleTemplateAutomation,
+        resetTemplatesToDefault,
+        clearCommunicationLogs,
+        resendCommunication,
+        triggerNotification,
+        broadcastManualMessage,
+        broadcastMessage: broadcastManualMessage,
+        makeAdmissionDecision,
         acceptAdmissionOffer,
         learners,
         toasts,

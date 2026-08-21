@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Assessment, Question, AssessmentStatus } from '../../types';
+import { Assessment, Question, AssessmentStatus, Application } from '../../types';
 import { AssessmentSettingsModal } from './assessment/AssessmentSettingsModal';
 import { QuestionEditorModal } from './assessment/QuestionEditorModal';
 import { BulkQuestionUploadModal } from './assessment/BulkQuestionUploadModal';
 import { AssessmentResourceManager } from './assessment/AssessmentResourceManager';
+import { ManualGradingModal } from './assessment/ManualGradingModal';
 import { AssessmentRunner } from '../applicant/AssessmentRunner';
 import { 
   Sliders, 
@@ -38,12 +39,20 @@ import {
   AlignLeft,
   Eye,
   Check,
-  AlertCircle
+  AlertCircle,
+  Users,
+  Search,
+  CheckCircle,
+  ShieldCheck,
+  UserCheck,
+  UserX,
+  UserMinus
 } from 'lucide-react';
 
 export const AssessmentStudio: React.FC = () => {
   const { 
     assessments, 
+    assessmentSubmissions,
     createAssessment, 
     saveAssessment, 
     deleteAssessment, 
@@ -52,7 +61,9 @@ export const AssessmentStudio: React.FC = () => {
     programs, 
     cohorts, 
     applications,
-    currentUser
+    currentUser,
+    makeAdmissionDecision,
+    addToast
   } = useApp();
 
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>(
@@ -65,6 +76,13 @@ export const AssessmentStudio: React.FC = () => {
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [activeTab, setActiveTab] = useState<'questions' | 'resources' | 'submissions'>('questions');
+
+  // Manual Grading Modal State
+  const [gradingApplication, setGradingApplication] = useState<Application | null>(null);
+  const [gradingSubmission, setGradingSubmission] = useState<any>(null);
+  const [showGradingModal, setShowGradingModal] = useState(false);
+  const [submissionSearchQuery, setSubmissionSearchQuery] = useState('');
+  const [submissionFilter, setSubmissionFilter] = useState<'all' | 'passed' | 'failed' | 'needs_review'>('all');
 
   // Test Simulation Mode
   const [previewingAsApplicant, setPreviewingAsApplicant] = useState(false);
@@ -465,6 +483,18 @@ export const AssessmentStudio: React.FC = () => {
                 <Paperclip className="w-3.5 h-3.5" />
                 <span>Linked Study Resources ({activeAssessment.resources?.length || 0})</span>
               </button>
+
+              <button
+                onClick={() => setActiveTab('submissions')}
+                className={`pb-2.5 font-bold text-xs border-b-2 transition cursor-pointer flex items-center space-x-1.5 ${
+                  activeTab === 'submissions'
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Submissions & Grading ({relatedSubmissions.length})</span>
+              </button>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -703,6 +733,236 @@ export const AssessmentStudio: React.FC = () => {
             />
           )}
 
+          {/* TAB 3: Submissions & Manual Grading (Program Manager View) */}
+          {activeTab === 'submissions' && (
+            <div className="space-y-4">
+              {/* Filter and Stats Bar */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold font-['Space_Grotesk'] text-slate-900">
+                      Applicant Submissions & Evaluation Queue
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Review automated scores, perform subjective manual grading, and execute admission decisions.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search applicants..."
+                        value={submissionSearchQuery}
+                        onChange={e => setSubmissionSearchQuery(e.target.value)}
+                        className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-indigo-500 outline-none w-56"
+                      />
+                    </div>
+
+                    <select
+                      value={submissionFilter}
+                      onChange={e => setSubmissionFilter(e.target.value as any)}
+                      className="text-xs font-semibold py-1.5 px-3 rounded-xl border border-slate-300 bg-white text-slate-700 outline-none"
+                    >
+                      <option value="all">All Submissions</option>
+                      <option value="passed">Passed Benchmark (≥ {activeAssessment.passingScore}%)</option>
+                      <option value="failed">Below Benchmark (&lt; {activeAssessment.passingScore}%)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Submissions Table */}
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                      <tr>
+                        <th className="p-3.5 pl-4">Applicant</th>
+                        <th className="p-3.5">Assessment</th>
+                        <th className="p-3.5">Score</th>
+                        <th className="p-3.5">Percentage</th>
+                        <th className="p-3.5">Status</th>
+                        <th className="p-3.5 text-right pr-4">Grading & Decision Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {applications
+                        .filter(app => {
+                          const matchesSearch = 
+                            app.fullName.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ||
+                            app.email.toLowerCase().includes(submissionSearchQuery.toLowerCase());
+                          const score = app.assessmentScore || 0;
+                          const passing = activeAssessment.passingScore || 70;
+                          
+                          if (!matchesSearch) return false;
+                          if (submissionFilter === 'passed') return score >= passing;
+                          if (submissionFilter === 'failed') return score < passing && app.assessmentScore !== undefined;
+                          return true;
+                        })
+                        .map(app => {
+                          const sub = assessmentSubmissions.find(s => 
+                            s.applicationId === app.id || 
+                            (s.assessmentId === activeAssessment.id && s.applicantId === app.applicantId)
+                          );
+                          const totalMax = activeAssessment.questions.reduce((a, q) => a + (q.points || 0), 0) || 100;
+                          const rawEarned = sub ? sub.score : Math.round(((app.assessmentScore || 0) / 100) * totalMax);
+                          const pct = app.assessmentScore !== undefined ? app.assessmentScore : (sub ? sub.percentageScore : 0);
+                          const hasPassed = pct >= (activeAssessment.passingScore || 70);
+
+                          return (
+                            <tr key={app.id} className="hover:bg-slate-50/80 transition">
+                              {/* Applicant Column */}
+                              <td className="p-3.5 pl-4">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0">
+                                    {app.fullName.split(' ').map(n => n[0]).join('')}
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-slate-900 flex items-center space-x-1.5">
+                                      <span>{app.fullName}</span>
+                                      {app.status === 'admitted' && (
+                                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
+                                          Admitted
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-slate-400 font-mono">{app.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Assessment Column */}
+                              <td className="p-3.5">
+                                <div className="font-medium text-slate-800">{activeAssessment.title}</div>
+                                <div className="text-[11px] text-slate-400">Passing: {activeAssessment.passingScore}%</div>
+                              </td>
+
+                              {/* Score Column */}
+                              <td className="p-3.5 font-mono">
+                                <span className="font-bold text-slate-900">{rawEarned}</span>
+                                <span className="text-slate-400"> / {totalMax} pts</span>
+                              </td>
+
+                              {/* Percentage Column */}
+                              <td className="p-3.5">
+                                <div className="flex items-center space-x-2">
+                                  <span className={`font-mono font-bold ${hasPassed ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                    {pct}%
+                                  </span>
+                                  <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full rounded-full ${hasPassed ? 'bg-emerald-500' : 'bg-amber-500'}`} 
+                                      style={{ width: `${Math.min(100, pct)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Status Column */}
+                              <td className="p-3.5">
+                                <span className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                  app.status === 'admitted' || app.status === 'accepted'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : app.status === 'waitlisted'
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    : app.status === 'rejected'
+                                    ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                    : hasPassed
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                }`}>
+                                  {app.status === 'admitted' ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>Admitted (Offer Sent)</span>
+                                    </>
+                                  ) : app.status === 'waitlisted' ? (
+                                    <>
+                                      <Clock className="w-3 h-3 text-amber-600" />
+                                      <span>Waitlisted</span>
+                                    </>
+                                  ) : app.status === 'rejected' ? (
+                                    <>
+                                      <X className="w-3 h-3 text-rose-600" />
+                                      <span>Rejected</span>
+                                    </>
+                                  ) : hasPassed ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>Passed Benchmark</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <AlertCircle className="w-3 h-3 text-amber-600" />
+                                      <span>Below Benchmark</span>
+                                    </>
+                                  )}
+                                </span>
+                              </td>
+
+                              {/* Action Buttons Column */}
+                              <td className="p-3.5 pr-4 text-right">
+                                <div className="flex items-center justify-end space-x-2">
+                                  <button
+                                    onClick={() => {
+                                      setGradingApplication(app);
+                                      setGradingSubmission(sub);
+                                      setShowGradingModal(true);
+                                    }}
+                                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 transition cursor-pointer flex items-center space-x-1"
+                                    title="Open manual review for subjective & objective questions"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span>Review & Grade</span>
+                                  </button>
+
+                                  {app.status !== 'admitted' && (
+                                    <button
+                                      onClick={() => {
+                                        makeAdmissionDecision({
+                                          applicationId: app.id,
+                                          decision: 'ACCEPTED',
+                                          reason: `Admitted following assessment evaluation (${pct}%).`,
+                                          decidedBy: currentUser.name,
+                                        });
+                                      }}
+                                      className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200 transition cursor-pointer flex items-center space-x-1"
+                                      title="Accept and stage learner profile"
+                                    >
+                                      <UserCheck className="w-3.5 h-3.5" />
+                                      <span>Accept</span>
+                                    </button>
+                                  )}
+
+                                  {app.status !== 'waitlisted' && (
+                                    <button
+                                      onClick={() => {
+                                        makeAdmissionDecision({
+                                          applicationId: app.id,
+                                          decision: 'WAITLISTED',
+                                          reason: `Placed on priority waitlist following assessment (${pct}%).`,
+                                          decidedBy: currentUser.name,
+                                        });
+                                      }}
+                                      className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs rounded-xl border border-amber-200 transition cursor-pointer flex items-center space-x-1"
+                                      title="Place on Waitlist"
+                                    >
+                                      <UserMinus className="w-3.5 h-3.5" />
+                                      <span>Waitlist</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Settings Modal */}
           <AssessmentSettingsModal
             assessment={activeAssessment}
@@ -730,6 +990,21 @@ export const AssessmentStudio: React.FC = () => {
             onImport={handleBulkImportQuestions}
             existingQuestions={activeAssessment.questions}
           />
+
+          {/* Manual Grading & Admission Review Modal */}
+          {gradingApplication && (
+            <ManualGradingModal
+              isOpen={showGradingModal}
+              onClose={() => {
+                setShowGradingModal(false);
+                setGradingApplication(null);
+                setGradingSubmission(null);
+              }}
+              assessment={activeAssessment}
+              application={gradingApplication}
+              submission={gradingSubmission}
+            />
+          )}
         </>
       ) : (
         <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">

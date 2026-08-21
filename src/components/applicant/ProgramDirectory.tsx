@@ -100,103 +100,115 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
       </div>
 
       {/* Program Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredPrograms.map(program => {
-          const progCohorts = cohorts.filter(c => c.programId === program.id && c.status !== 'archived');
-          const activeOpenCohort = progCohorts.find(c => c.status === 'applications_open' || c.status === 'admissions_open' || c.status === 'assessment_phase');
+      {filteredPrograms.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredPrograms.map(program => {
+            const progCohorts = cohorts.filter(c => c.programId === program.id && c.status !== 'archived');
+            const activeOpenCohort = progCohorts.find(c => c.status === 'applications_open' || c.status === 'admissions_open' || c.status === 'assessment_phase');
 
-          return (
-            <div
-              key={program.id}
-              className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-300 hover:shadow-md transition flex flex-col justify-between overflow-hidden"
-            >
-              <div className="p-6">
-                {/* Category & Badge */}
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-                    {program.category}
-                  </span>
-                  <span className="text-xs text-slate-500 font-medium flex items-center space-x-1">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{program.durationWeeks} Weeks • {program.format}</span>
-                  </span>
+            return (
+              <div
+                key={program.id}
+                className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:border-orange-300 hover:shadow-md transition flex flex-col justify-between overflow-hidden"
+              >
+                <div className="p-6">
+                  {/* Category & Badge */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-semibold text-orange-700 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200">
+                      {program.category}
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium flex items-center space-x-1">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{program.durationWeeks} Weeks • {program.format}</span>
+                    </span>
+                  </div>
+
+                  {/* Title & Icon */}
+                  <div className="flex items-start space-x-3 mb-2">
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${program.color || 'from-orange-600 to-amber-600'} text-white shadow-sm shrink-0`}>
+                      {getProgramIcon(program.icon)}
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 leading-tight">{program.name}</h3>
+                      <span className="text-[10px] text-slate-400 font-mono font-semibold">{program.code}</span>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-xs text-slate-600 line-clamp-2 mt-2 leading-relaxed">
+                    {program.summary || program.description}
+                  </p>
+
+                  {/* Skills Tags */}
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {program.skillsTaught.slice(0, 4).map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="text-[10px] bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded-md"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                    {program.skillsTaught.length > 4 && (
+                      <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">
+                        +{program.skillsTaught.length - 4} more
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Title & Icon */}
-                <div className="flex items-start space-x-3 mb-2">
-                  <div className={`p-2.5 rounded-xl bg-gradient-to-tr ${program.color || 'from-indigo-600 to-purple-600'} text-white shadow-sm shrink-0`}>
-                    {getProgramIcon(program.icon)}
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 leading-tight">{program.name}</h3>
-                    <span className="text-[10px] text-slate-400 font-mono font-semibold">{program.code}</span>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <p className="text-xs text-slate-600 line-clamp-2 mt-2 leading-relaxed">
-                  {program.summary || program.description}
-                </p>
-
-                {/* Skills Tags */}
-                <div className="mt-4 flex flex-wrap gap-1.5">
-                  {program.skillsTaught.slice(0, 4).map((skill, idx) => (
-                    <span
-                      key={idx}
-                      className="text-[10px] bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded-md"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                  {program.skillsTaught.length > 4 && (
-                    <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">
-                      +{program.skillsTaught.length - 4} more
-                    </span>
+                {/* Cohorts Footer */}
+                <div className="bg-slate-50 p-4 px-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                  {activeOpenCohort ? (
+                    <div>
+                      <div className="text-[11px] font-bold text-slate-800 flex items-center space-x-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>{activeOpenCohort.name}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">
+                        Deadline: <strong className="text-slate-700">{activeOpenCohort.applicationDeadline}</strong>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-slate-500 italic">
+                      Next cohort dates announcing soon
+                    </div>
                   )}
-                </div>
-              </div>
 
-              {/* Cohorts Footer */}
-              <div className="bg-slate-50 p-4 px-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                {activeOpenCohort ? (
-                  <div>
-                    <div className="text-[11px] font-bold text-slate-800 flex items-center space-x-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>{activeOpenCohort.name}</span>
-                    </div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">
-                      Deadline: <strong className="text-slate-700">{activeOpenCohort.applicationDeadline}</strong>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-[11px] text-slate-500 italic">
-                    Next cohort dates announcing soon
-                  </div>
-                )}
-
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setSelectedProgramModal(program)}
-                    className="text-xs text-slate-600 hover:text-slate-900 font-semibold px-3 py-1.5 rounded-lg hover:bg-slate-200 transition cursor-pointer"
-                  >
-                    Curriculum Details
-                  </button>
-
-                  {activeOpenCohort && (
+                  <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => onSelectProgramForApply(program.id, activeOpenCohort.id)}
-                      className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl shadow-sm transition cursor-pointer"
+                      onClick={() => setSelectedProgramModal(program)}
+                      className="text-xs text-slate-600 hover:text-slate-900 font-semibold px-3 py-1.5 rounded-lg hover:bg-slate-200 transition cursor-pointer"
                     >
-                      <span>Apply Now</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      Curriculum Details
                     </button>
-                  )}
+
+                    {activeOpenCohort && (
+                      <button
+                        onClick={() => onSelectProgramForApply(program.id, activeOpenCohort.id)}
+                        className="flex items-center space-x-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl shadow-sm transition cursor-pointer"
+                      >
+                        <span>Apply Now</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 space-y-3">
+          <div className="w-12 h-12 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center mx-auto">
+            <BookOpen className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900">No Programmes Available Yet</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+            There are currently no active programmes in the directory. You can create fresh programmes, cohorts, and application forms in the Manager Portal.
+          </p>
+        </div>
+      )}
 
       {/* Program Detail Modal */}
       {selectedProgramModal && (

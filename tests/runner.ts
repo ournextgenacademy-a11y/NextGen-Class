@@ -5,10 +5,11 @@ import { runOwnershipTests } from './ownership.test';
 import { runValidationTests } from './validation.test';
 import { runProgrammeCohortTests } from './programme_cohort.test';
 import { runModule3AuthAccessControlTests } from './module3_auth_access_control.test';
+import { runModule11DashboardMneTests } from './module11_dashboard_mne.test';
 
 async function runAllTests() {
   console.log('===============================================================');
-  console.log('    NEXTGEN CLASS — MODULES 0, 1, 2 & 3 VERIFICATION SUITE     ');
+  console.log('    NEXTGEN CLASS — APPLICATION & M&E VERIFICATION SUITE       ');
   console.log('===============================================================\n');
 
   const testSuites = [
@@ -19,6 +20,7 @@ async function runAllTests() {
     { name: 'Input Sanitization & Schema Validation (Zod)', fn: runValidationTests },
     { name: 'Module 2: Programme & Cohort Lifecycle Management (CRUD)', fn: runProgrammeCohortTests },
     { name: 'Module 3: Authentication, Protected Routes & RBAC Access Control', fn: runModule3AuthAccessControlTests },
+    { name: 'Module 11: Application Dashboard & M&E Calculation Engine', fn: runModule11DashboardMneTests },
   ];
 
   let totalPassed = 0;

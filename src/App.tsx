@@ -241,7 +241,7 @@ const MainLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-['Plus_Jakarta_Sans'] antialiased text-slate-900 selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-zinc-100 flex flex-col font-['Plus_Jakarta_Sans'] antialiased text-zinc-900 selection:bg-orange-500 selection:text-white">
       {/* Universal Top Navigation Header with RBAC enforcement */}
       <Header 
         onLogout={handleLogout} 
@@ -258,7 +258,7 @@ const MainLayout: React.FC = () => {
         {activePortal === 'applicant' && (
           <div className="space-y-6">
             {/* Applicant Subnavigation Bar */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-1.5 shadow-sm overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-zinc-200 p-1.5 shadow-sm overflow-x-auto">
               <div className="flex items-center space-x-1 min-w-max">
                 {[
                   { id: 'dashboard', label: 'My Applications & Status' },
@@ -272,8 +272,8 @@ const MainLayout: React.FC = () => {
                     onClick={() => setApplicantTab(item.id as any)}
                     className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
                       applicantTab === item.id
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        ? 'bg-black text-white shadow-sm'
+                        : 'text-zinc-600 hover:text-black hover:bg-zinc-50'
                     }`}
                   >
                     <span>{item.label}</span>
@@ -331,7 +331,7 @@ const MainLayout: React.FC = () => {
 
             {/* Direct Assessment Modal */}
             {takingDirectAssessment && myApp && myAssessment && (
-              <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm p-4 sm:p-8 overflow-y-auto flex items-center justify-center">
+              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm p-4 sm:p-8 overflow-y-auto flex items-center justify-center">
                 <div className="max-w-3xl w-full">
                   <AssessmentRunner
                     assessment={myAssessment}
@@ -350,12 +350,12 @@ const MainLayout: React.FC = () => {
         {activePortal === 'manager' && (
           <div className="space-y-6">
             {/* Manager Module Subnavigation Bar */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-1.5 shadow-sm overflow-x-auto">
+            <div className="bg-white rounded-2xl border border-zinc-200 p-1.5 shadow-sm overflow-x-auto">
               <div className="flex items-center space-x-1 min-w-max">
                 {[
                   { id: 'overview', label: 'Dashboard' },
                   { id: 'programs', label: 'Programmes & Cohorts' },
-                  { id: 'forms', label: 'Application Forms', badge: 'Module 4' },
+                  { id: 'forms', label: 'Application Forms' },
                   { id: 'applications', label: 'Admissions Pipeline' },
                   { id: 'assessments', label: 'Assessment Studio' },
                   { id: 'communications', label: 'Communications' },
@@ -367,20 +367,11 @@ const MainLayout: React.FC = () => {
                     onClick={() => setManagerTab(item.id as any)}
                     className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
                       managerTab === item.id
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        ? 'bg-orange-500 text-white shadow-sm'
+                        : 'text-zinc-600 hover:text-black hover:bg-zinc-50'
                     }`}
                   >
                     <span>{item.label}</span>
-                    {item.badge && (
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
-                        managerTab === item.id 
-                          ? 'bg-indigo-700/80 text-indigo-100' 
-                          : 'bg-indigo-50 text-indigo-600 border border-indigo-200'
-                      }`}>
-                        {item.badge}
-                      </span>
-                    )}
                   </button>
                 ))}
               </div>
@@ -449,22 +440,22 @@ const MainLayout: React.FC = () => {
       </main>
 
       {/* System Footer */}
-      <footer className="bg-white border-t border-slate-200 mt-12 py-6 px-4 text-xs text-slate-500">
+      <footer className="bg-white border-t border-zinc-200 mt-12 py-6 px-4 text-xs text-zinc-500">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
-            <span className="font-bold text-slate-800">NextGen Class</span>
+            <span className="font-bold text-zinc-900">NextGen Academy</span>
             <span>•</span>
-            <span>Authentication-First Security & Multi-Role Governance</span>
+            <span>Admissions, Assessments & Learning Platform</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-[11px]">
-            <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-mono font-semibold">
-              Protected Endpoints & Resource Ownership
+            <span className="bg-orange-50 text-orange-700 px-2.5 py-0.5 rounded-full font-mono font-semibold border border-orange-200">
+              Enterprise Governance
             </span>
-            <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-mono font-semibold">
+            <span className="bg-zinc-100 text-zinc-800 px-2.5 py-0.5 rounded-full font-mono font-semibold border border-zinc-200">
               Strict RBAC Isolation
             </span>
-            <span>Audit Trail Enabled</span>
+            <span className="text-zinc-600">Audit Trail Enabled</span>
           </div>
         </div>
       </footer>

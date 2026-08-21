@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Circle Radial Gradient -->
+    <radialGradient id="ng-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff6b00" stop-opacity="1" />
+      <stop offset="45%" stop-color="#f95700" stop-opacity="0.95" />
+      <stop offset="75%" stop-color="#e04300" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#b83200" stop-opacity="1" />
+    </radialGradient>
+    
+    <!-- Linear Orange Gradient -->
+    <linearGradient id="ng-gradient-linear" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff7a1a" />
+      <stop offset="50%" stop-color="#ff5500" />
+      <stop offset="100%" stop-color="#d83a00" />
+    </linearGradient>
+
+    <!-- Center Bright Sphere Gradient -->
+    <radialGradient id="ng-core-sphere" cx="38%" cy="36%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="25%" stop-color="#ffaa44" />
+      <stop offset="55%" stop-color="#ff5500" />
+      <stop offset="85%" stop-color="#cf3000" />
+      <stop offset="100%" stop-color="#601200" />
+    </radialGradient>
+
+    <!-- Outer Deep Shadow Filter -->
+    <filter id="ng-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#ff5500" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Base Black Backdrop with subtle soft edge -->
+  <circle cx="256" cy="256" r="240" fill="#09090b" />
+
+  <!-- Outer Concentric Grooves / Stepped Rings -->
+  <g filter="url(#ng-shadow)">
+    <!-- Ring 1 (Outermost ring) -->
+    <circle cx="256" cy="256" r="224" fill="none" stroke="#ff5500" stroke-width="4" stroke-opacity="0.25" />
+    
+    <!-- Ring 2 -->
+    <circle cx="256" cy="256" r="208" fill="none" stroke="#ff5500" stroke-width="6" stroke-opacity="0.4" />
+    
+    <!-- Ring 3 (Main stepped disc) -->
+    <circle cx="256" cy="256" r="192" fill="#18181b" stroke="#ff6b1a" stroke-width="5" />
+    <circle cx="256" cy="256" r="190" fill="none" stroke="#ff5500" stroke-width="3" stroke-opacity="0.6" />
+
+    <!-- Ring 4 -->
+    <circle cx="256" cy="256" r="172" fill="#22120c" stroke="#ff6b1a" stroke-width="6" stroke-opacity="0.85" />
+    
+    <!-- Ring 5 -->
+    <circle cx="256" cy="256" r="154" fill="#3a1608" stroke="#ff7a22" stroke-width="7" />
+
+    <!-- Ring 6 -->
+    <circle cx="256" cy="256" r="134" fill="#541b07" stroke="#ff8c33" stroke-width="8" />
+
+    <!-- Ring 7 -->
+    <circle cx="256" cy="256" r="112" fill="#7a2404" stroke="#ffa34d" stroke-width="9" />
+
+    <!-- Ring 8 -->
+    <circle cx="256" cy="256" r="88" fill="#a83204" stroke="#ffb86c" stroke-width="10" />
+
+    <!-- Inner Stepped Sphere Core -->
+    <circle cx="256" cy="256" r="64" fill="url(#ng-glow)" stroke="#ffffff" stroke-width="3" stroke-opacity="0.7" />
+    
+    <!-- 3D Dimensional Core Center -->
+    <circle cx="256" cy="256" r="46" fill="url(#ng-core-sphere)" />
+    
+    <!-- Micro Specular Highlight -->
+    <ellipse cx="242" cy="242" rx="14" ry="9" fill="#ffffff" fill-opacity="0.75" transform="rotate(-30 242 242)" />
+  </g>
+
+  <!-- Subtle Radial Slices / Texture Hatching -->
+  <g stroke="#09090b" stroke-width="1.5" stroke-opacity="0.2">
+    <line x1="256" y1="32" x2="256" y2="480" />
+    <line x1="32" y1="256" x2="480" y2="256" />
+    <line x1="98" y1="98" x2="414" y2="414" />
+    <line x1="98" y1="414" x2="414" y2="98" />
+  </g>
+</svg>
