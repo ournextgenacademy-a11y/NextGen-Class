@@ -13,18 +13,14 @@ export const googleProvider = new GoogleAuthProvider();
 export async function testConnection(): Promise<boolean> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log('Connected to Firestore successfully.');
     return true;
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
+      console.warn('Firestore client operating in offline mode / syncing.');
     }
-    // Document not found is fine, means connection succeeded
-    return true;
+    return false;
   }
 }
 
-// Initial connection check on startup
-testConnection().catch(err => {
-  console.warn('Firestore connection initialized:', err);
-});
+// Initial connection check on startup with error suppression
+testConnection().catch(() => {});

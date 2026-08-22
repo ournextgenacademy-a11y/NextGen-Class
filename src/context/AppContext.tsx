@@ -206,7 +206,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
   USERS: 'nextgen_class_users_v2',
-  CURRENT_USER_ID: 'nextgen_class_current_user_v2',
+  CURRENT_USER: 'nextgen_class_current_user',
+  CURRENT_USER_ID: 'nextgen_class_current_user_id',
   PROGRAMS: 'nextgen_class_programs_v2',
   COHORTS: 'nextgen_class_cohorts_v2',
   APPLICATIONS: 'nextgen_class_applications_v2',
@@ -227,20 +228,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [currentUser, setCurrentUser] = useState<User>(() => {
-    const savedId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
-    const found = allUsers.find(u => u.id === savedId);
-    return found || allUsers[0]; // Default Amina Yusuf
+    try {
+      const savedUserStr = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      if (savedUserStr) {
+        const parsed = JSON.parse(savedUserStr);
+        if (parsed && parsed.id && parsed.role) return parsed;
+      }
+      const savedId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID) || localStorage.getItem('nextgen_class_current_user_v2');
+      if (savedId) {
+        const found = allUsers.find(u => u.id === savedId);
+        if (found) return found;
+      }
+    } catch (e) {
+      console.warn('Error reading saved user session:', e);
+    }
+    return allUsers[0]; // Default Administrator / First User
   });
 
   const [activePortal, setActivePortal] = useState<'applicant' | 'manager' | 'learner' | 'facilitator'>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path.startsWith('/admin')) return 'manager';
+      if (path.startsWith('/learn')) return 'learner';
+      if (path.startsWith('/facilitator')) return 'facilitator';
+      if (path.startsWith('/apply')) return 'applicant';
+    }
     if (currentUser.role === 'program_manager' || currentUser.role === 'reviewer') return 'manager';
     if (currentUser.role === 'learner') return 'learner';
     if (currentUser.role === 'facilitator') return 'facilitator';
     return 'applicant';
   });
 
-  const [managerTab, setManagerTab] = useState<'overview' | 'programs' | 'forms' | 'applications' | 'assessments' | 'communications' | 'mne' | 'learners'>('overview');
-  const [applicantTab, setApplicantTab] = useState<'dashboard' | 'explore' | 'assessments' | 'inbox' | 'apply'>('dashboard');
+  const [managerTab, setManagerTab] = useState<'overview' | 'programs' | 'forms' | 'applications' | 'assessments' | 'communications' | 'mne' | 'learners'>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path.includes('/admin/programs')) return 'programs';
+      if (path.includes('/admin/forms')) return 'forms';
+      if (path.includes('/admin/applications')) return 'applications';
+      if (path.includes('/admin/assessments')) return 'assessments';
+      if (path.includes('/admin/communications')) return 'communications';
+      if (path.includes('/admin/mne')) return 'mne';
+      if (path.includes('/admin/learners')) return 'learners';
+    }
+    return 'overview';
+  });
+
+  const [applicantTab, setApplicantTab] = useState<'dashboard' | 'explore' | 'assessments' | 'inbox' | 'apply'>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path.includes('/apply/explore')) return 'explore';
+      if (path.includes('/apply/assessments')) return 'assessments';
+      if (path.includes('/apply/apply') || path.includes('/apply/wizard') || path.includes('/apply/dossier')) return 'apply';
+      if (path.includes('/apply/inbox')) return 'inbox';
+    }
+    return 'dashboard';
+  });
   
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
@@ -302,7 +344,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sync to local storage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, currentUser.id);
+    try {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(currentUser));
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, currentUser.id);
+    } catch (e) {
+      console.warn('Could not save current user to localStorage:', e);
+    }
   }, [currentUser]);
 
   useEffect(() => {

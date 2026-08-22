@@ -248,5 +248,10 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isVerified() && isAdmin();
     }
+
+    // ================= TEST CONNECTION =================
+    match /test/{testId} {
+      allow read: if true;
+    }
   }
 }

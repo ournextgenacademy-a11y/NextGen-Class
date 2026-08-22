@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/common/Header';
 import { ToastContainer } from './components/common/ToastContainer';
@@ -27,6 +27,42 @@ import { LearnerManagerView } from './components/manager/LearnerManagerView';
 // Facilitator & Learner Portal Components
 import { FacilitatorWorkspace } from './components/facilitator/FacilitatorWorkspace';
 import { LearnerDashboard } from './components/learner/LearnerDashboard';
+
+// Helper to parse path into { isAuth, authMode, portal, managerTab, applicantTab }
+function parseRoute(path: string) {
+  const cleanPath = (path || '/').split('?')[0].split('#')[0];
+  
+  if (cleanPath === '/login' || cleanPath === '/register' || cleanPath === '/forgot-password' || cleanPath === '/reset-password' || cleanPath === '/verify-email') {
+    return { isAuth: true, authMode: cleanPath.replace('/', '') as any, portal: null, managerTab: 'overview' as const, applicantTab: 'dashboard' as const };
+  }
+
+  if (cleanPath.startsWith('/admin')) {
+    const sub = cleanPath.replace(/^\/admin\/?/, '');
+    const validManagerTabs = ['overview', 'programs', 'forms', 'applications', 'assessments', 'communications', 'mne', 'learners'];
+    const tab = (validManagerTabs.includes(sub) ? sub : 'overview') as 'overview' | 'programs' | 'forms' | 'applications' | 'assessments' | 'communications' | 'mne' | 'learners';
+    return { isAuth: false, authMode: null, portal: 'manager' as const, managerTab: tab, applicantTab: 'dashboard' as const };
+  }
+
+  if (cleanPath.startsWith('/apply')) {
+    const sub = cleanPath.replace(/^\/apply\/?/, '');
+    let tab: 'dashboard' | 'explore' | 'assessments' | 'inbox' | 'apply' = 'dashboard';
+    if (sub === 'explore') tab = 'explore';
+    else if (sub === 'assessments') tab = 'assessments';
+    else if (sub === 'apply' || sub === 'wizard' || sub === 'dossier') tab = 'apply';
+    else if (sub === 'inbox') tab = 'inbox';
+    return { isAuth: false, authMode: null, portal: 'applicant' as const, managerTab: 'overview' as const, applicantTab: tab };
+  }
+
+  if (cleanPath.startsWith('/facilitator')) {
+    return { isAuth: false, authMode: null, portal: 'facilitator' as const, managerTab: 'overview' as const, applicantTab: 'dashboard' as const };
+  }
+
+  if (cleanPath.startsWith('/learn')) {
+    return { isAuth: false, authMode: null, portal: 'learner' as const, managerTab: 'overview' as const, applicantTab: 'dashboard' as const };
+  }
+
+  return { isAuth: false, authMode: null, portal: null, managerTab: 'overview' as const, applicantTab: 'dashboard' as const };
+}
 
 const MainLayout: React.FC = () => {
   const { 
@@ -65,7 +101,7 @@ const MainLayout: React.FC = () => {
   const [showDirectOfferModal, setShowDirectOfferModal] = useState(false);
   const [takingDirectAssessment, setTakingDirectAssessment] = useState(false);
 
-  // Synchronize route and handle browser popstate (back/forward)
+  // Synchronize route and handle browser popstate (back/forward history)
   const navigateTo = useCallback((path: string, replace = false) => {
     if (typeof window !== 'undefined') {
       if (replace) {
@@ -77,87 +113,109 @@ const MainLayout: React.FC = () => {
     }
   }, []);
 
+  // Listen for browser Back and Forward navigation
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname);
+      if (typeof window !== 'undefined') {
+        setCurrentPath(window.location.pathname);
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Sync state whenever currentPath changes (from Back/Forward or initial load)
+  useEffect(() => {
+    const route = parseRoute(currentPath);
+
+    if (route.portal) {
+      if (route.portal !== activePortal) {
+        setActivePortal(route.portal);
+      }
+      if (route.portal === 'manager' && route.managerTab !== managerTab) {
+        setManagerTab(route.managerTab);
+      }
+      if (route.portal === 'applicant' && route.applicantTab !== applicantTab) {
+        setApplicantTab(route.applicantTab);
+      }
+    }
+  }, [currentPath]);
+
   // ROUTE GUARD & RBAC DISPATCHER
   useEffect(() => {
     if (!isAuthenticated) {
       // Unauthenticated: lock path to auth routes
-      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/forgot-password') && !currentPath.startsWith('/reset-password') && !currentPath.startsWith('/verify-email')) {
+      if (!currentPath.startsWith('/login') && !currentPath.startsWith('/register') && !currentPath.startsWith('/forgot-password') && !currentPath.startsWith('/reset-password') && !currentPath.startsWith('/verify-email')) {
         navigateTo('/login', true);
       }
       return;
     }
 
     // Authenticated: Enforce Role Boundaries and Role-Based Redirection
-    const role = currentUser.role;
+    const role = currentUser?.role || 'applicant';
 
     if (role === 'applicant') {
       // APPLICANT is restricted to /apply/*
       if (currentPath.startsWith('/admin') || currentPath.startsWith('/facilitator') || currentPath.startsWith('/learn')) {
         addToast({
-          title: 'Access Denied (403 Forbidden)',
-          message: `Role 'APPLICANT' is restricted from administrative portals. Redirected to /apply.`,
-          type: 'error',
+          title: 'Access Restricted',
+          message: `Applicant accounts are routed to the candidate workspace.`,
+          type: 'info',
         });
         setActivePortal('applicant');
         navigateTo('/apply', true);
       } else if (currentPath === '/' || currentPath === '/login') {
         setActivePortal('applicant');
         navigateTo('/apply', true);
-      } else {
-        setActivePortal('applicant');
       }
     } else if (role === 'program_manager' || role === 'reviewer') {
-      // PROGRAM_MANAGER routes to /admin by default, but can preview /apply
+      // PROGRAM_MANAGER can access /admin, and can also preview /apply
       if (currentPath === '/' || currentPath === '/login') {
         setActivePortal('manager');
         navigateTo('/admin', true);
-      } else if (currentPath.startsWith('/admin')) {
-        setActivePortal('manager');
-      } else if (currentPath.startsWith('/apply')) {
-        setActivePortal('applicant');
       }
     } else if (role === 'facilitator') {
       // FACILITATOR routes to /facilitator
       if (currentPath.startsWith('/admin') || currentPath.startsWith('/learn')) {
         addToast({
-          title: 'Access Denied (403 Forbidden)',
-          message: `Facilitators do not have access to administrative management. Redirected to /facilitator.`,
-          type: 'error',
+          title: 'Facilitator Workspace',
+          message: `Navigated to Facilitator Workspace.`,
+          type: 'info',
         });
         setActivePortal('facilitator' as any);
         navigateTo('/facilitator', true);
       } else if (currentPath === '/' || currentPath === '/login' || currentPath === '/apply') {
         setActivePortal('facilitator' as any);
         navigateTo('/facilitator', true);
-      } else {
-        setActivePortal('facilitator' as any);
       }
     } else if (role === 'learner') {
       // LEARNER routes to /learn
       if (currentPath.startsWith('/admin') || currentPath.startsWith('/facilitator')) {
         addToast({
-          title: 'Access Denied (403 Forbidden)',
-          message: `Learners are restricted from administrative views. Redirected to /learn.`,
-          type: 'error',
+          title: 'Learner Hub',
+          message: `Navigated to Learner Hub.`,
+          type: 'info',
         });
         setActivePortal('learner');
         navigateTo('/learn', true);
       } else if (currentPath === '/' || currentPath === '/login' || currentPath === '/apply') {
         setActivePortal('learner');
         navigateTo('/learn', true);
-      } else {
-        setActivePortal('learner');
       }
     }
   }, [isAuthenticated, currentUser?.role, currentPath, navigateTo, setActivePortal, addToast]);
+
+  const handleManagerTabChange = (tab: typeof managerTab) => {
+    setManagerTab(tab);
+    const newPath = tab === 'overview' ? '/admin' : `/admin/${tab}`;
+    navigateTo(newPath);
+  };
+
+  const handleApplicantTabChange = (tab: typeof applicantTab) => {
+    setApplicantTab(tab);
+    const newPath = tab === 'dashboard' ? '/apply' : `/apply/${tab}`;
+    navigateTo(newPath);
+  };
 
   const myApp = applications.find(a => a.applicantId === currentUser.id) || applications[0];
   const myProg = programs.find(p => p.id === myApp?.programId) || programs[0];
@@ -167,7 +225,7 @@ const MainLayout: React.FC = () => {
   const handleSelectProgramForApply = (progId: string, cohortId: string) => {
     setApplyProgramId(progId);
     setApplyCohortId(cohortId);
-    setApplicantTab('apply');
+    handleApplicantTabChange('apply');
   };
 
   const handleLogout = async () => {
@@ -189,6 +247,7 @@ const MainLayout: React.FC = () => {
     // Invalidate local storage tokens and flags
     localStorage.removeItem('nextgen_class_is_authenticated');
     localStorage.removeItem('nextgen_class_auth_token');
+    localStorage.removeItem('nextgen_class_current_user');
     localStorage.removeItem('nextgen_class_current_user_id');
 
     setIsAuthenticated(false);
@@ -196,7 +255,7 @@ const MainLayout: React.FC = () => {
 
     addToast({
       title: 'Signed Out',
-      message: 'Session invalidated and securely terminated.',
+      message: 'Session securely terminated.',
       type: 'info',
     });
   };
@@ -221,7 +280,6 @@ const MainLayout: React.FC = () => {
   };
 
   // STRICT AUTHENTICATION-FIRST GATEWAY
-  // If unauthenticated: Absolutely NO application screens, dashboards, or portals are rendered.
   if (!isAuthenticated) {
     let authMode: 'login' | 'register' | 'forgot-password' | 'reset-password' | 'verify-email' = 'login';
     if (currentPath === '/register') authMode = 'register';
@@ -230,7 +288,7 @@ const MainLayout: React.FC = () => {
     else if (currentPath === '/verify-email') authMode = 'verify-email';
 
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-zinc-950">
         <AuthScreen 
           onAuthenticated={handleAuthenticated} 
           initialMode={authMode}
@@ -241,7 +299,7 @@ const MainLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-100 flex flex-col font-['Plus_Jakarta_Sans'] antialiased text-zinc-900 selection:bg-orange-500 selection:text-white">
+    <div className="min-h-screen bg-zinc-100 flex flex-col font-['Plus_Jakarta_Sans'] antialiased text-zinc-900 selection:bg-orange-600 selection:text-white">
       {/* Universal Top Navigation Header with RBAC enforcement */}
       <Header 
         onLogout={handleLogout} 
@@ -269,10 +327,11 @@ const MainLayout: React.FC = () => {
                 ].map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => setApplicantTab(item.id as any)}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                    id={`applicant-tab-${item.id}`}
+                    onClick={() => handleApplicantTabChange(item.id as any)}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                       applicantTab === item.id
-                        ? 'bg-black text-white shadow-sm'
+                        ? 'bg-zinc-950 text-white shadow-sm ring-1 ring-zinc-900'
                         : 'text-zinc-600 hover:text-black hover:bg-zinc-50'
                     }`}
                   >
@@ -284,11 +343,11 @@ const MainLayout: React.FC = () => {
 
             {applicantTab === 'dashboard' && (
               <ApplicantDashboard
-                onStartNewApplication={() => setApplicantTab('explore')}
+                onStartNewApplication={() => handleApplicantTabChange('explore')}
                 onResumeDraft={(draft) => {
                   setApplyProgramId(draft.programId);
                   setApplyCohortId(draft.cohortId);
-                  setApplicantTab('apply');
+                  handleApplicantTabChange('apply');
                 }}
               />
             )}
@@ -307,8 +366,8 @@ const MainLayout: React.FC = () => {
               <ApplicationWizard
                 preselectedProgramId={applyProgramId}
                 preselectedCohortId={applyCohortId}
-                onCancel={() => setApplicantTab('dashboard')}
-                onComplete={() => setApplicantTab('dashboard')}
+                onCancel={() => handleApplicantTabChange('dashboard')}
+                onComplete={() => handleApplicantTabChange('dashboard')}
               />
             )}
 
@@ -364,10 +423,11 @@ const MainLayout: React.FC = () => {
                 ].map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => setManagerTab(item.id as any)}
-                    className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                    id={`manager-tab-${item.id}`}
+                    onClick={() => handleManagerTabChange(item.id as any)}
+                    className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                       managerTab === item.id
-                        ? 'bg-orange-500 text-white shadow-sm'
+                        ? 'bg-orange-600 text-white shadow-sm ring-1 ring-orange-700'
                         : 'text-zinc-600 hover:text-black hover:bg-zinc-50'
                     }`}
                   >
@@ -379,10 +439,10 @@ const MainLayout: React.FC = () => {
 
             {managerTab === 'overview' && (
               <ManagerDashboard
-                onNavigateTab={(tab) => setManagerTab(tab)}
+                onNavigateTab={(tab) => handleManagerTabChange(tab)}
                 onSelectApplication={(appId) => {
                   setSelectedAppIdForReview(appId);
-                  setManagerTab('applications');
+                  handleManagerTabChange('applications');
                 }}
               />
             )}

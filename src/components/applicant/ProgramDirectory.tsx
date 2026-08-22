@@ -33,11 +33,13 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
   const categories = ['All', 'Artificial Intelligence', 'Software Engineering', 'Data & Analytics', 'Cloud & DevOps'];
 
   const filteredPrograms = programs.filter(p => {
+    if (p.status === 'archived') return false;
     const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
+    const searchLower = (searchQuery || '').toLowerCase();
     const matchesSearch = 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.skillsTaught.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
+      (p.name || '').toLowerCase().includes(searchLower) ||
+      (p.description || '').toLowerCase().includes(searchLower) ||
+      (p.skillsTaught && Array.isArray(p.skillsTaught) ? p.skillsTaught.some(s => (s || '').toLowerCase().includes(searchLower)) : false);
     return matchesCategory && matchesSearch;
   });
 

@@ -50,24 +50,32 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
          a.status === 'draft'
   );
 
-  // Active open cohorts
-  const openCohorts = cohorts.filter(c => c.status === 'applications_open' || c.status === 'admissions_open' || c.status === 'assessment_phase');
+  // Active available cohorts
+  const availableCohorts = cohorts.filter(c => c.status !== 'archived');
 
   const [selectedProgId, setSelectedProgId] = useState<string>(
-    existingDraft?.programId || preselectedProgramId || (openCohorts[0]?.programId || programs[0]?.id || '')
+    preselectedProgramId || existingDraft?.programId || (availableCohorts[0]?.programId || programs[0]?.id || '')
   );
 
-  const availableCohortsForProg = openCohorts.filter(c => c.programId === selectedProgId);
+  const availableCohortsForProg = availableCohorts.filter(c => c.programId === selectedProgId);
 
   const [selectedCohId, setSelectedCohId] = useState<string>(
-    existingDraft?.cohortId || preselectedCohortId || (availableCohortsForProg[0]?.id || openCohorts[0]?.id || '')
+    preselectedCohortId || existingDraft?.cohortId || (availableCohortsForProg[0]?.id || availableCohorts[0]?.id || '')
   );
 
   useEffect(() => {
-    if (availableCohortsForProg.length > 0 && !availableCohortsForProg.some(c => c.id === selectedCohId)) {
+    if (preselectedProgramId) {
+      setSelectedProgId(preselectedProgramId);
+    }
+  }, [preselectedProgramId]);
+
+  useEffect(() => {
+    if (preselectedCohortId) {
+      setSelectedCohId(preselectedCohortId);
+    } else if (availableCohortsForProg.length > 0 && !availableCohortsForProg.some(c => c.id === selectedCohId)) {
       setSelectedCohId(availableCohortsForProg[0].id);
     }
-  }, [selectedProgId]);
+  }, [selectedProgId, preselectedCohortId]);
 
   const [currentStep, setCurrentStep] = useState<number>(
     Math.min(2, Math.max(1, existingDraft?.lastSavedStep || 1))

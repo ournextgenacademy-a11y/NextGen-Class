@@ -1,1 +1,44 @@
 @import "tailwindcss";
+
+@layer base {
+  /* Ensure all dropdown selects and options have crisp, high-contrast readable text */
+  select {
+    color: #09090b !important;
+    background-color: #ffffff !important;
+    border-color: #d4d4d8;
+  }
+
+  select:focus {
+    outline: none;
+    border-color: #ea580c !important;
+    box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.25) !important;
+  }
+
+  option {
+    color: #09090b !important;
+    background-color: #ffffff !important;
+    font-weight: 500;
+  }
+
+  /* Selection highlight */
+  ::selection {
+    background-color: #ea580c;
+    color: #ffffff;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ea580c;
+}

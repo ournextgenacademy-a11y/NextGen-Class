@@ -305,7 +305,7 @@ export const FormBuilder: React.FC = () => {
                 >
                   <option value="all">All Programmes</option>
                   {programs.map(p => (
-                    <option key={p.id} value={p.id}>{p.title}</option>
+                    <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
 
@@ -366,7 +366,7 @@ export const FormBuilder: React.FC = () => {
 
                       <div className="text-[11px] text-slate-500 truncate flex items-center space-x-1">
                         <BookOpen className="w-3 h-3 text-slate-400" />
-                        <span>{prog?.title || 'Global Form'}</span>
+                        <span>{prog?.name || 'Global Form'}</span>
                       </div>
                     </div>
                   );
@@ -400,8 +400,8 @@ export const FormBuilder: React.FC = () => {
                       <span className="text-xs font-mono font-bold bg-slate-200 text-slate-800 px-2 py-0.5 rounded-md">
                         Version {activeForm.version}
                       </span>
-                      <span className="text-xs text-slate-500">
-                        • {activeProgram?.title || 'Academy Wide'}
+                      <span className="text-xs text-slate-500 font-medium">
+                        • {activeProgram?.name || 'Academy Wide'}
                       </span>
                     </div>
 
@@ -778,12 +778,32 @@ export const FormBuilder: React.FC = () => {
                     setNewFormProgramId(e.target.value);
                     setNewFormCohortId('');
                   }}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white"
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 bg-white text-slate-900 font-medium"
                 >
                   {programs.map(p => (
-                    <option key={p.id} value={p.id}>{p.title}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.code ? `[${p.code}] ` : ''}{p.name} — ({p.category || 'General'})
+                    </option>
                   ))}
                 </select>
+
+                {/* Target Program preview badge */}
+                {(() => {
+                  const selProg = programs.find(p => p.id === newFormProgramId);
+                  if (!selProg) return null;
+                  return (
+                    <div className="mt-2 p-2.5 bg-orange-50/70 border border-orange-200/80 rounded-xl flex items-center justify-between text-xs">
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-xs"></span>
+                        <span className="font-bold text-orange-950">{selProg.name}</span>
+                        <span className="text-[10px] bg-orange-200/70 text-orange-900 font-bold px-2 py-0.5 rounded-md">
+                          {selProg.category}
+                        </span>
+                      </div>
+                      <span className="text-orange-700 text-[11px] font-medium">{selProg.durationWeeks} Weeks • {selProg.format}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div>
@@ -793,9 +813,9 @@ export const FormBuilder: React.FC = () => {
                 <select
                   value={newFormCohortId}
                   onChange={e => setNewFormCohortId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white"
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 bg-white text-slate-900"
                 >
-                  <option value="">All Cohorts for this Programme</option>
+                  <option value="">All Cohorts for this Programme (Global)</option>
                   {cohorts
                     .filter(c => c.programId === newFormProgramId)
                     .map(c => (
@@ -938,7 +958,7 @@ export const FormBuilder: React.FC = () => {
       {showPreviewModal && activeForm && (
         <FormPreviewModal
           form={activeForm}
-          programTitle={activeProgram?.title}
+          programTitle={activeProgram?.name}
           onClose={() => setShowPreviewModal(false)}
         />
       )}
