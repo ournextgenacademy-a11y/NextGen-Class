@@ -36,7 +36,8 @@ import {
   SEED_TEMPLATES,
   SEED_COMMUNICATION_LOGS,
   SEED_LEARNERS,
-  SEED_APPLICATION_FORMS
+  SEED_APPLICATION_FORMS,
+  createDefaultProgrammeApplicationForm
 } from '../data/seedData';
 import { 
   dispatchNotificationEvent, 
@@ -1536,6 +1537,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 1. If cohortId provided, find the cohort to resolve attached form or programId
     let targetProgId = programmeId;
     let cohortLinkedFormId: string | undefined;
+    let targetProgName: string | undefined;
+
     if (cohortId) {
       const coh = cohorts.find(c => c.id === cohortId);
       if (coh) {
@@ -1544,16 +1547,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
+    if (targetProgId) {
+      const prog = programs.find(p => p.id === targetProgId);
+      if (prog) {
+        targetProgName = prog.name;
+      }
+    }
+
     // 2. Direct cohort linked form (e.g. configured in Cohort Settings)
     if (cohortLinkedFormId) {
       const directForm = forms.find(f => f.id === cohortLinkedFormId && f.status === 'published');
-      if (directForm) return directForm;
+      if (directForm && directForm.sections.length > 0) return directForm;
     }
 
     // 3. Cohort specific published form (form explicitly tagged with cohortId)
     if (cohortId) {
       const cohortForm = forms.find(f => f.status === 'published' && f.cohortId === cohortId);
-      if (cohortForm) return cohortForm;
+      if (cohortForm && cohortForm.sections.length > 0) return cohortForm;
     }
 
     // 4. Programme specific published form
@@ -1563,17 +1573,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         (f.programmeId === targetProgId || f.programId === targetProgId) && 
         (!f.cohortId || (cohortId && f.cohortId === cohortId))
       );
-      if (progGenericForm) return progGenericForm;
+      if (progGenericForm && progGenericForm.sections.length > 0) return progGenericForm;
 
       const anyProgPublishedForm = forms.find(f => 
         f.status === 'published' && 
         (f.programmeId === targetProgId || f.programId === targetProgId)
       );
-      if (anyProgPublishedForm) return anyProgPublishedForm;
+      if (anyProgPublishedForm && anyProgPublishedForm.sections.length > 0) return anyProgPublishedForm;
     }
 
-    // 5. Fallback: Return any available published form
-    return forms.find(f => f.status === 'published');
+    // 5. Fallback: Return any available published form with sections
+    const anyPublished = forms.find(f => f.status === 'published' && f.sections.length > 0);
+    if (anyPublished) return anyPublished;
+
+    // 6. Guaranteed Standard Admissions Questionnaire Template for this programme
+    return createDefaultProgrammeApplicationForm(targetProgId || 'default', targetProgName);
   };
 
   // Application operations
