@@ -3,6 +3,7 @@
   "appId": "1:803739655844:web:f279aa8f8eba1052f6d031",
   "apiKey": "AIzaSyDtRPlBHXjPwPnalqTs6XsU9r1oiQpXp4s",
   "authDomain": "nextgen-class-e643e.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-nextgenclass-091bb090-999c-4d3b-8274-4b13bc53afc5",
   "storageBucket": "nextgen-class-e643e.firebasestorage.app",
   "messagingSenderId": "803739655844",
   "measurementId": "",

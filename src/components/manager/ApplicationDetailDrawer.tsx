@@ -55,37 +55,17 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
     programs, 
     cohorts, 
     currentUser, 
-    forms,
-    getPublishedFormForProgramme,
     updateApplicationStatus, 
     updateRubricEvaluation, 
     addInternalNote,
     updateDocumentVerification,
     toggleStarApplication,
     sendMessage,
-    triggerNotification,
-    addToast,
     makeAdmissionDecision 
   } = useApp();
 
   const program = programs.find(p => p.id === application.programId);
   const cohort = cohorts.find(c => c.id === application.cohortId);
-  const associatedForm = forms.find(f => f.id === application.formId) || getPublishedFormForProgramme(application.programId, application.cohortId);
-
-  // Field lookup from associated form schema
-  const fieldLookup = new Map<string, { label: string; fieldType: string; sectionTitle: string; required?: boolean }>();
-  if (associatedForm) {
-    associatedForm.sections.forEach(sec => {
-      sec.fields.forEach(fld => {
-        fieldLookup.set(fld.id, {
-          label: fld.label,
-          fieldType: fld.fieldType,
-          sectionTitle: sec.title,
-          required: fld.required,
-        });
-      });
-    });
-  }
 
   const [activeTab, setActiveTab] = useState<'dossier' | 'rubric' | 'notes' | 'decision' | 'timeline' | 'message'>('dossier');
 
@@ -148,14 +128,10 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
     updateRubricEvaluation(application.id, rubric);
   };
 
-  const handleSendDirectMessage = async (e: React.FormEvent) => {
+  const handleSendDirectMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!directMessageText.trim()) return;
 
-    const subject = `Admissions Update: ${program?.name || 'NextGen Academy'}`;
-    const content = directMessageText;
-
-    // Send in-app portal message
     sendMessage({
       senderId: currentUser.id,
       senderName: currentUser.name,
@@ -165,45 +141,13 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
       programId: application.programId,
       cohortId: application.cohortId,
       type: 'direct',
-      subject,
-      content,
+      subject: `Admissions Update: ${program?.name || 'NextGen Academy'}`,
+      content: directMessageText,
     });
-
-    // Send Gmail email notification directly to learner
-    try {
-      await triggerNotification(
-        'MANUAL_BROADCAST',
-        {
-          application,
-          cohort,
-          programme: program,
-        },
-        {
-          forceSend: true,
-          customSubject: subject,
-          customBody: content,
-          channelsOverride: { email: true, inApp: true, sms: false },
-          sender: {
-            id: currentUser.id,
-            name: currentUser.name || 'NextGen Admissions Desk',
-            role: currentUser.role,
-          },
-        }
-      );
-
-      addToast({
-        title: 'Email & Notification Dispatched ✉️',
-        message: `Direct communication delivered to ${application.fullName} (${application.email}) via Gmail & Portal Inbox.`,
-        type: 'success',
-      });
-    } catch (err: any) {
-      console.error('Failed to trigger notification:', err);
-    }
 
     setDirectMessageText('');
     setActiveTab('timeline');
   };
-
 
   const statusOptions: { value: ApplicationStatus; label: string; badgeColor: string }[] = [
     { value: 'draft', label: 'Draft in Progress', badgeColor: 'bg-slate-100 text-slate-800 border-slate-300' },
@@ -343,209 +287,86 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
           {/* TAB 1: Candidate Dossier */}
           {activeTab === 'dossier' && (
             <div className="space-y-6">
-              {/* Contact & Personal Identity Card */}
+              {/* Contact & Demographics Card */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center justify-between">
-                  <span>Candidate Identity & Contact</span>
-                  <span className="text-[10px] text-slate-500 font-normal">App ID: #{application.id}</span>
+                <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
+                  Contact & Demographics
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-700">
+                <div className="grid grid-cols-2 gap-3 text-slate-700">
                   <div className="flex items-center space-x-2">
-                    <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="font-semibold text-slate-900">{application.fullName}</span>
+                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{application.email}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="truncate">{application.email}</span>
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{application.phone}</span>
                   </div>
-                  {application.phone && (
-                    <div className="flex items-center space-x-2">
-                      <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{application.phone}</span>
-                    </div>
-                  )}
-                  {(application.city || application.country) && (
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{[application.city, application.country].filter(Boolean).join(', ')}</span>
-                    </div>
-                  )}
-                  {(application.gender || application.ageRange) && (
-                    <div className="text-slate-600 sm:col-span-2 text-[11px]">
-                      {[
-                        application.gender ? `Gender: ${application.gender}` : null,
-                        application.ageRange ? `Age Range: ${application.ageRange}` : null,
-                      ].filter(Boolean).join(' • ')}
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{application.city}, {application.country}</span>
+                  </div>
+                  <div>
+                    Gender: <strong>{application.gender}</strong> • Age: <strong>{application.ageRange}</strong>
+                  </div>
                 </div>
               </div>
 
-              {/* Form Responses Grouped by Sections (Form Definition) */}
-              {(() => {
-                const renderedCustomAnswerKeys = new Set<string>();
-
-                return (
-                  <div className="space-y-4">
-                    {associatedForm && associatedForm.sections.length > 0 ? (
-                      <>
-                        <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center justify-between">
-                          <span>Application Form Responses</span>
-                          <span className="text-[10px] text-indigo-600 font-semibold">{associatedForm.title}</span>
-                        </div>
-
-                        {associatedForm.sections.map((sec, sIdx) => {
-                          const nonFileFields = sec.fields.filter(f => f.fieldType !== 'file_upload');
-                          if (nonFileFields.length === 0) return null;
-
-                          return (
-                            <div key={sec.id || sIdx} className="bg-indigo-50/30 p-4 rounded-xl border border-indigo-100/80 space-y-3">
-                              <div className="font-bold text-indigo-950 text-xs flex items-center space-x-2 border-b border-indigo-100 pb-2">
-                                <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
-                                  {sIdx + 1}
-                                </span>
-                                <span>{sec.title}</span>
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {nonFileFields.map(f => {
-                                  // Track rendered keys
-                                  renderedCustomAnswerKeys.add(f.id);
-                                  renderedCustomAnswerKeys.add(f.label);
-
-                                  let ans = application.customAnswers?.[f.id] !== undefined
-                                    ? application.customAnswers[f.id]
-                                    : application.customAnswers?.[f.label] !== undefined
-                                    ? application.customAnswers[f.label]
-                                    : (application as any)[f.id];
-
-                                  // Fallback checks for standard field types
-                                  if ((ans === undefined || ans === null || ans === '') && f.label) {
-                                    const lowerLabel = f.label.toLowerCase();
-                                    if (lowerLabel.includes('education') || lowerLabel.includes('degree')) ans = application.educationLevel;
-                                    else if (lowerLabel.includes('study') || lowerLabel.includes('major')) ans = application.fieldOfStudy;
-                                    else if (lowerLabel.includes('employment') || lowerLabel.includes('job')) ans = application.employmentStatus;
-                                    else if (lowerLabel.includes('experience') || lowerLabel.includes('years')) ans = application.yearsExperience;
-                                    else if (lowerLabel.includes('programming') || lowerLabel.includes('coding')) ans = application.programmingBackground;
-                                    else if (lowerLabel.includes('motivation') || lowerLabel.includes('why')) ans = application.motivationStatement;
-                                    else if (lowerLabel.includes('goal') || lowerLabel.includes('career')) ans = application.goalsStatement;
-                                  }
-
-                                  if (ans === undefined || ans === null || ans === '') {
-                                    return (
-                                      <div key={f.id} className="bg-white p-3 rounded-lg border border-slate-200 space-y-1 opacity-75">
-                                        <div className="text-[10px] text-slate-500 font-semibold">{f.label}</div>
-                                        <div className="font-medium text-slate-400 italic text-[11px]">Not provided</div>
-                                      </div>
-                                    );
-                                  }
-
-                                  return (
-                                    <div key={f.id} className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
-                                      <div className="text-[10px] text-slate-500 font-semibold">{f.label}</div>
-                                      <div className="font-medium text-slate-900 leading-relaxed">
-                                        {Array.isArray(ans) ? ans.join(', ') : typeof ans === 'boolean' ? (ans ? 'Yes' : 'No') : String(ans)}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </>
-                    ) : null}
-
-                    {/* Additional Form Answers (if any customAnswers exist outside sections) */}
-                    {application.customAnswers && Object.keys(application.customAnswers).length > 0 && (
-                      (() => {
-                        const extraEntries = Object.entries(application.customAnswers).filter(
-                          ([k]) => !renderedCustomAnswerKeys.has(k)
-                        );
-                        if (extraEntries.length === 0) return null;
-
-                        return (
-                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                            <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-                              Additional Questionnaire Responses
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {extraEntries.map(([key, val]) => (
-                                <div key={key} className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
-                                  <span className="text-[10px] text-slate-500 font-semibold">{fieldLookup.get(key)?.label || key}:</span>
-                                  <p className="text-slate-800 font-medium">
-                                    {Array.isArray(val) ? val.join(', ') : typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val)}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })()
-                    )}
+              {/* Education & Experience Card */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
+                  Education & Technical Background
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-slate-700">
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Education</span>
+                    <strong>{application.educationLevel}</strong> ({application.fieldOfStudy})
                   </div>
-                );
-              })()}
-
-              {/* Standard Statements & Background */}
-              {(application.educationLevel || application.fieldOfStudy || application.employmentStatus || application.yearsExperience || application.programmingBackground) && (
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                  <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-                    Education & Background Summary
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Employment</span>
+                    <strong>{application.employmentStatus}</strong>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-700">
-                    {application.educationLevel && (
-                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                        <span className="text-slate-500 block text-[10px] font-semibold">Education Level</span>
-                        <strong className="text-slate-900">{application.educationLevel}</strong> {application.fieldOfStudy ? `(${application.fieldOfStudy})` : ''}
-                      </div>
-                    )}
-                    {application.employmentStatus && (
-                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                        <span className="text-slate-500 block text-[10px] font-semibold">Employment Status</span>
-                        <strong className="text-slate-900">{application.employmentStatus}</strong>
-                      </div>
-                    )}
-                    {application.yearsExperience && (
-                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                        <span className="text-slate-500 block text-[10px] font-semibold">Experience</span>
-                        <strong className="text-slate-900">{application.yearsExperience}</strong>
-                      </div>
-                    )}
-                    {application.programmingBackground && (
-                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                        <span className="text-slate-500 block text-[10px] font-semibold">Coding Proficiency</span>
-                        <strong className="text-slate-900">{application.programmingBackground}</strong>
-                      </div>
-                    )}
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Experience</span>
+                    <strong>{application.yearsExperience}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Coding Proficiency</span>
+                    <strong>{application.programmingBackground}</strong>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Motivation Statements (Only if provided) */}
-              {(application.motivationStatement || application.goalsStatement) && (
-                <div className="space-y-3">
-                  {application.motivationStatement && (
-                    <div className="space-y-1.5">
-                      <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-                        Motivation Statement
-                      </div>
-                      <div className="p-3.5 bg-white rounded-xl border border-slate-200 leading-relaxed text-slate-800">
-                        {application.motivationStatement}
-                      </div>
-                    </div>
-                  )}
+              {/* Motivation & Vision */}
+              <div className="space-y-3">
+                <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
+                  Motivation Statement
+                </div>
+                <div className="p-3.5 bg-white rounded-xl border border-slate-200 leading-relaxed text-slate-800">
+                  {application.motivationStatement}
+                </div>
 
-                  {application.goalsStatement && (
-                    <div className="space-y-1.5">
-                      <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-                        6-Month Goals & Career Impact
-                      </div>
-                      <div className="p-3.5 bg-white rounded-xl border border-slate-200 leading-relaxed text-slate-800">
-                        {application.goalsStatement}
-                      </div>
+                <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px] pt-2">
+                  6-Month Goals & Career Impact
+                </div>
+                <div className="p-3.5 bg-white rounded-xl border border-slate-200 leading-relaxed text-slate-800">
+                  {application.goalsStatement}
+                </div>
+              </div>
+
+              {/* Custom Cohort Answers from Dynamic Form */}
+              {application.customAnswers && Object.keys(application.customAnswers).length > 0 && (
+                <div className="bg-indigo-50/40 p-4 rounded-xl border border-indigo-100 space-y-3">
+                  <div className="font-bold text-indigo-950 uppercase tracking-wider text-[11px]">
+                    Application Form Responses
+                  </div>
+                  {Object.entries(application.customAnswers).map(([key, val]) => (
+                    <div key={key} className="space-y-1">
+                      <span className="text-[10px] text-indigo-800 font-semibold">{key}:</span>
+                      <p className="text-slate-800 bg-white p-2.5 rounded-lg border border-slate-200">
+                        {Array.isArray(val) ? val.join(', ') : String(val)}
+                      </p>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
 
@@ -566,18 +387,15 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
                       const fileRecord = file as UploadedFileRecord;
                       const isVerified = fileRecord.verificationStatus === 'verified';
                       const isRejected = fileRecord.verificationStatus === 'rejected';
-                      const docLabel = fieldLookup.get(fieldId)?.label || fieldId.replace(/_/g, ' ');
 
                       return (
                         <div key={fieldId} className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">{docLabel}</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">{fieldId}</span>
                               <div className="font-bold text-slate-900 flex items-center space-x-1.5 mt-0.5">
                                 <span>📎 {fileRecord.fileName}</span>
-                                <span className="text-[10px] text-slate-400 font-normal">
-                                  ({fileRecord.fileSizeMb || '1.0'} MB)
-                                </span>
+                                <span className="text-[10px] text-slate-400 font-normal">({fileRecord.fileSizeMb} MB)</span>
                               </div>
                             </div>
 
@@ -644,43 +462,41 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
               </div>
 
               {/* Profiles & Links */}
-              {(application.linkedinUrl || application.githubUrl || application.portfolioUrl) && (
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {application.linkedinUrl && (
-                    <a
-                      href={application.linkedinUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-lg transition"
-                    >
-                      <Linkedin className="w-3.5 h-3.5 text-blue-600" />
-                      <span>LinkedIn Profile</span>
-                    </a>
-                  )}
-                  {application.githubUrl && (
-                    <a
-                      href={application.githubUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-lg transition"
-                    >
-                      <Github className="w-3.5 h-3.5 text-slate-900" />
-                      <span>GitHub Code</span>
-                    </a>
-                  )}
-                  {application.portfolioUrl && (
-                    <a
-                      href={application.portfolioUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-lg transition"
-                    >
-                      <Globe className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Portfolio Website</span>
-                    </a>
-                  )}
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2 pt-2">
+                {application.linkedinUrl && (
+                  <a
+                    href={application.linkedinUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-lg transition"
+                  >
+                    <Linkedin className="w-3.5 h-3.5 text-blue-600" />
+                    <span>LinkedIn Profile</span>
+                  </a>
+                )}
+                {application.githubUrl && (
+                  <a
+                    href={application.githubUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-lg transition"
+                  >
+                    <Github className="w-3.5 h-3.5 text-slate-900" />
+                    <span>GitHub Code</span>
+                  </a>
+                )}
+                {application.portfolioUrl && (
+                  <a
+                    href={application.portfolioUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-lg transition"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Portfolio Website</span>
+                  </a>
+                )}
+              </div>
             </div>
           )}
 
