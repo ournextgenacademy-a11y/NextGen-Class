@@ -59,9 +59,25 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
+const cleanForFirestore = (obj: any): any => {
+  if (obj === undefined) return null;
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(item => cleanForFirestore(item)).filter(item => item !== undefined);
+  }
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      clean[key] = cleanForFirestore(value);
+    }
+  }
+  return clean;
+};
+
 const syncDocToFirestore = async (col: string, id: string, data: any) => {
   try {
-    await setDoc(doc(db, col, id), data, { merge: true });
+    const sanitized = cleanForFirestore(data);
+    await setDoc(doc(db, col, id), sanitized, { merge: true });
   } catch (err) {
     console.warn(`Firestore sync error on ${col}/${id}:`, err);
   }
@@ -1247,6 +1263,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setForms(prev => [newVersion, ...prev]);
     setActiveFormId(newVersion.id);
+    syncDocToFirestore('forms', newVersion.id, newVersion);
 
     addToast({
       title: `Form Version ${newVersionNumber} Created`,
@@ -1268,11 +1285,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setForms(prev => prev.map(f => {
       if (f.id !== formId) return f;
-      return {
+      const updated = {
         ...f,
         updatedAt: new Date().toISOString(),
         sections: [...f.sections, newSection],
       };
+      syncDocToFirestore('forms', formId, updated);
+      return updated;
     }));
 
     addToast({
@@ -1287,22 +1306,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateSectionInForm = (formId: string, sectionId: string, updates: Partial<ApplicationFormSection>) => {
     setForms(prev => prev.map(f => {
       if (f.id !== formId) return f;
-      return {
+      const updated = {
         ...f,
         updatedAt: new Date().toISOString(),
         sections: f.sections.map(s => s.id === sectionId ? { ...s, ...updates } : s),
       };
+      syncDocToFirestore('forms', formId, updated);
+      return updated;
     }));
   };
 
   const deleteSectionFromForm = (formId: string, sectionId: string) => {
     setForms(prev => prev.map(f => {
       if (f.id !== formId) return f;
-      return {
+      const updated = {
         ...f,
         updatedAt: new Date().toISOString(),
         sections: f.sections.filter(s => s.id !== sectionId),
       };
+      syncDocToFirestore('forms', formId, updated);
+      return updated;
     }));
     addToast({
       title: 'Section Deleted',
@@ -1315,7 +1338,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setForms(prev => prev.map(f => {
       if (f.id !== formId) return f;
       
-      let updated: ApplicationFormSection[] = [];
+      let updatedSections: ApplicationFormSection[] = [];
       if (Array.isArray(sourceIndexOrIds)) {
         // Reorder by list of IDs
         const idMap = new Map<string, ApplicationFormSection>(f.sections.map(s => [s.id, s]));
@@ -1329,22 +1352,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         // append any remaining
         idMap.forEach(s => orderedFromIds.push(s));
-        updated = orderedFromIds.map((sec, idx) => ({ ...sec, displayOrder: idx + 1 }));
+        updatedSections = orderedFromIds.map((sec, idx) => ({ ...sec, displayOrder: idx + 1 }));
       } else if (typeof sourceIndexOrIds === 'number' && typeof destIndex === 'number') {
         const reordered: ApplicationFormSection[] = [...f.sections];
         const [moved] = reordered.splice(sourceIndexOrIds, 1);
         if (!moved) return f;
         reordered.splice(destIndex, 0, moved);
-        updated = reordered.map((sec, idx) => ({ ...sec, displayOrder: idx + 1 }));
+        updatedSections = reordered.map((sec, idx) => ({ ...sec, displayOrder: idx + 1 }));
       } else {
         return f;
       }
 
-      return {
+      const updatedForm = {
         ...f,
         updatedAt: new Date().toISOString(),
-        sections: updated,
+        sections: updatedSections,
       };
+      syncDocToFirestore('forms', formId, updatedForm);
+      return updatedForm;
     }));
   };
 
@@ -1359,7 +1384,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setForms(prev => prev.map(f => {
       if (f.id !== formId) return f;
-      return {
+      const updated = {
         ...f,
         updatedAt: new Date().toISOString(),
         sections: f.sections.map(s => {
@@ -1370,6 +1395,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         }),
       };
+      syncDocToFirestore('forms', formId, updated);
+      return updated;
     }));
 
     addToast({
@@ -1384,7 +1411,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateFieldInSection = (formId: string, sectionId: string, fieldId: string, updates: Partial<ApplicationFormField>) => {
     setForms(prev => prev.map(f => {
       if (f.id !== formId) return f;
-      return {
+      const updated = {
         ...f,
         updatedAt: new Date().toISOString(),
         sections: f.sections.map(s => {
@@ -1395,13 +1422,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         }),
       };
+      syncDocToFirestore('forms', formId, updated);
+      return updated;
     }));
   };
 
   const deleteFieldFromSection = (formId: string, sectionId: string, fieldId: string) => {
     setForms(prev => prev.map(f => {
       if (f.id !== formId) return f;
-      return {
+      const updated = {
         ...f,
         updatedAt: new Date().toISOString(),
         sections: f.sections.map(s => {
@@ -1412,6 +1441,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         }),
       };
+      syncDocToFirestore('forms', formId, updated);
+      return updated;
     }));
     addToast({
       title: 'Field Removed',
@@ -1423,42 +1454,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const reorderFieldsInSection = (formId: string, sectionId: string, sourceIndexOrIds: number | string[], destIndex?: number) => {
     setForms(prev => prev.map(f => {
       if (f.id !== formId) return f;
-      return {
+      
+      let updatedSections = f.sections.map(s => {
+        if (s.id !== sectionId) return s;
+        
+        let updated: ApplicationFormField[] = [];
+        if (Array.isArray(sourceIndexOrIds)) {
+          // Reorder by list of field IDs
+          const idMap = new Map<string, ApplicationFormField>(s.fields.map(fld => [fld.id, fld]));
+          const orderedFromIds: ApplicationFormField[] = [];
+          sourceIndexOrIds.forEach(id => {
+            const fld = idMap.get(id);
+            if (fld) {
+              orderedFromIds.push(fld);
+              idMap.delete(id);
+            }
+          });
+          idMap.forEach(fld => orderedFromIds.push(fld));
+          updated = orderedFromIds.map((fld, idx) => ({ ...fld, displayOrder: idx + 1 }));
+        } else if (typeof sourceIndexOrIds === 'number' && typeof destIndex === 'number') {
+          const reordered: ApplicationFormField[] = [...s.fields];
+          const [moved] = reordered.splice(sourceIndexOrIds, 1);
+          if (!moved) return s;
+          reordered.splice(destIndex, 0, moved);
+          updated = reordered.map((fld, idx) => ({ ...fld, displayOrder: idx + 1 }));
+        } else {
+          return s;
+        }
+
+        return {
+          ...s,
+          fields: updated,
+        };
+      });
+
+      const updatedForm = {
         ...f,
         updatedAt: new Date().toISOString(),
-        sections: f.sections.map(s => {
-          if (s.id !== sectionId) return s;
-          
-          let updated: ApplicationFormField[] = [];
-          if (Array.isArray(sourceIndexOrIds)) {
-            // Reorder by list of field IDs
-            const idMap = new Map<string, ApplicationFormField>(s.fields.map(fld => [fld.id, fld]));
-            const orderedFromIds: ApplicationFormField[] = [];
-            sourceIndexOrIds.forEach(id => {
-              const fld = idMap.get(id);
-              if (fld) {
-                orderedFromIds.push(fld);
-                idMap.delete(id);
-              }
-            });
-            idMap.forEach(fld => orderedFromIds.push(fld));
-            updated = orderedFromIds.map((fld, idx) => ({ ...fld, displayOrder: idx + 1 }));
-          } else if (typeof sourceIndexOrIds === 'number' && typeof destIndex === 'number') {
-            const reordered: ApplicationFormField[] = [...s.fields];
-            const [moved] = reordered.splice(sourceIndexOrIds, 1);
-            if (!moved) return s;
-            reordered.splice(destIndex, 0, moved);
-            updated = reordered.map((fld, idx) => ({ ...fld, displayOrder: idx + 1 }));
-          } else {
-            return s;
-          }
-
-          return {
-            ...s,
-            fields: updated,
-          };
-        }),
+        sections: updatedSections,
       };
+      syncDocToFirestore('forms', formId, updatedForm);
+      return updatedForm;
     }));
   };
 
@@ -1513,11 +1549,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         runningTotal += formattedFields.length;
       });
 
-      return {
+      const updatedForm = {
         ...f,
         updatedAt: new Date().toISOString(),
         sections: existingSections,
       };
+      syncDocToFirestore('forms', formId, updatedForm);
+      return updatedForm;
     }));
 
     addToast({
