@@ -99,7 +99,7 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
         {/* Header */}
         <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-indigo-600 text-white">
+            <div className="p-2 rounded-xl bg-orange-600 text-white shadow-sm shadow-orange-600/30">
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
@@ -107,7 +107,7 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
                 Bulk Upload Application Questions
               </h3>
               <p className="text-xs text-slate-300">
-                Target Form: <span className="text-indigo-300 font-semibold">{formTitle}</span>
+                Target Form: <span className="text-orange-300 font-semibold">{formTitle}</span>
               </p>
             </div>
           </div>
@@ -121,14 +121,14 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
 
         <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
           {/* Format Specification Banner */}
-          <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 flex flex-wrap sm:flex-nowrap items-start justify-between gap-4 text-xs">
+          <div className="bg-orange-50/70 border border-orange-100 rounded-xl p-4 flex flex-wrap sm:flex-nowrap items-start justify-between gap-4 text-xs">
             <div className="space-y-1">
-              <div className="font-bold text-indigo-900 flex items-center space-x-1.5">
-                <HelpCircle className="w-4 h-4 text-indigo-600" />
+              <div className="font-bold text-orange-950 flex items-center space-x-1.5">
+                <HelpCircle className="w-4 h-4 text-orange-600" />
                 <span>Required CSV Header Schema</span>
               </div>
               <p className="text-slate-600">
-                Your spreadsheet must include these columns: <code className="bg-white px-1.5 py-0.5 rounded border border-indigo-200 font-mono text-[11px] text-indigo-800">Section, Question, Type, Required, Options, Description</code>
+                Your spreadsheet must include these columns: <code className="bg-white px-1.5 py-0.5 rounded border border-orange-200 font-mono text-[11px] text-orange-800">Section, Question, Type, Required, Options, Description</code>
               </p>
               <p className="text-[11px] text-slate-500">
                 Options for dropdowns/radios/checkboxes should be separated by semicolons (e.g. <code>Option A; Option B; Option C</code>).
@@ -138,7 +138,7 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
             <button
               type="button"
               onClick={handleDownloadSample}
-              className="flex-shrink-0 flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 rounded-lg shadow-sm transition cursor-pointer"
+              className="flex-shrink-0 flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-orange-50 text-orange-700 font-bold border border-orange-200 rounded-lg shadow-sm transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Download CSV Template</span>
@@ -180,10 +180,10 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition ${
                 dragActive 
-                  ? 'border-indigo-600 bg-indigo-50/50' 
+                  ? 'border-orange-600 bg-orange-50/50' 
                   : fileName
                     ? 'border-emerald-300 bg-emerald-50/30'
-                    : 'border-slate-300 hover:border-indigo-400 bg-slate-50/50'
+                    : 'border-slate-300 hover:border-orange-400 bg-slate-50/50'
               }`}
             >
               <input
@@ -197,7 +197,7 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
                   }
                 }}
               />
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center mx-auto mb-3">
                 <UploadCloud className="w-6 h-6" />
               </div>
               {fileName ? (
@@ -235,7 +235,7 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
                   runValidation(e.target.value);
                 }}
                 placeholder="Section,Question,Type,Required,Options,Description&#10;Personal,Full Legal Name,Short text,true,,As in passport&#10;Experience,Years in Tech,Number,true,,Enter 0 if beginner"
-                className="w-full font-mono text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white"
+                className="w-full font-mono text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 bg-white"
               />
             </div>
           )}
@@ -295,7 +295,7 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className={`p-3 rounded-xl border flex items-start space-x-3 cursor-pointer transition ${
                 importMode === 'append'
-                  ? 'border-indigo-600 bg-indigo-50/60'
+                  ? 'border-orange-600 bg-orange-50/60 shadow-xs'
                   : 'border-slate-200 bg-white hover:border-slate-300'
               }`}>
                 <input
@@ -303,7 +303,7 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
                   name="importMode"
                   checked={importMode === 'append'}
                   onChange={() => setImportMode('append')}
-                  className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                  className="mt-0.5 text-orange-600 focus:ring-orange-500"
                 />
                 <div>
                   <div className="text-xs font-bold text-slate-800">Append to Existing Form</div>
@@ -313,7 +313,7 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
 
               <label className={`p-3 rounded-xl border flex items-start space-x-3 cursor-pointer transition ${
                 importMode === 'replace'
-                  ? 'border-rose-600 bg-rose-50/60'
+                  ? 'border-rose-600 bg-rose-50/60 shadow-xs'
                   : 'border-slate-200 bg-white hover:border-slate-300'
               }`}>
                 <input
@@ -346,7 +346,7 @@ export const FormBulkUploadModal: React.FC<FormBulkUploadModalProps> = ({
             type="button"
             disabled={!validationResult.tested || validationResult.errors.length > 0 || validationResult.validCount === 0}
             onClick={handleExecuteImport}
-            className="flex items-center space-x-1.5 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/20 transition cursor-pointer"
+            className="flex items-center space-x-1.5 px-6 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-md shadow-orange-600/20 transition cursor-pointer"
           >
             <Check className="w-4 h-4" />
             <span>Import {validationResult.validCount > 0 ? `${validationResult.validCount} Questions` : 'Questions'}</span>

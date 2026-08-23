@@ -341,14 +341,14 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
                 onClick={() => setSelectedStatusFilter(item.id)}
                 className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
                   isSelected 
-                    ? 'ring-2 ring-indigo-600 border-indigo-600 bg-indigo-50 shadow-xs' 
-                    : item.color + ' hover:border-slate-400 hover:shadow-xs'
+                    ? 'ring-2 ring-orange-600 border-orange-600 bg-orange-50 shadow-xs' 
+                    : item.color + ' hover:border-zinc-400 hover:shadow-xs'
                 }`}
               >
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 truncate block">
                   {item.label}
                 </span>
-                <span className="text-xl sm:text-2xl font-extrabold font-['Space_Grotesk'] text-slate-900 mt-1">
+                <span className="text-xl sm:text-2xl font-extrabold font-['Space_Grotesk'] text-zinc-900 mt-1">
                   {item.count}
                 </span>
               </button>
@@ -360,13 +360,13 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
       {/* ========================================================================= */}
       {/* 2. TOOLBAR, SEARCH, FILTERS & ACTION CONTROLS                             */}
       {/* ========================================================================= */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-900 font-['Space_Grotesk']">
+            <h2 className="text-xl font-bold text-zinc-900 font-['Space_Grotesk']">
               Admissions Applications & Candidate Dossiers
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-zinc-500 mt-0.5">
               Showing {filteredApps.length} of {applications.length} total applicant records
             </p>
           </div>
@@ -375,18 +375,18 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
             {/* Create Test Application Button */}
             <button
               onClick={() => setShowTestModal(true)}
-              className="flex items-center space-x-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold px-3.5 py-2 rounded-xl border border-indigo-200 transition cursor-pointer"
+              className="flex items-center space-x-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold px-3.5 py-2 rounded-xl border border-orange-200 transition cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create Test Application</span>
             </button>
 
             {/* View Mode Switcher */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <div className="flex items-center bg-zinc-100 p-1 rounded-xl border border-zinc-200">
               <button
                 onClick={() => setViewMode('table')}
                 className={`p-1.5 rounded-lg transition cursor-pointer ${
-                  viewMode === 'table' ? 'bg-white text-indigo-700 shadow-sm font-bold' : 'text-slate-600'
+                  viewMode === 'table' ? 'bg-white text-orange-700 shadow-sm font-bold' : 'text-zinc-600'
                 }`}
                 title="Data Table View"
               >
@@ -395,7 +395,7 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
               <button
                 onClick={() => setViewMode('cards')}
                 className={`p-1.5 rounded-lg transition cursor-pointer ${
-                  viewMode === 'cards' ? 'bg-white text-indigo-700 shadow-sm font-bold' : 'text-slate-600'
+                  viewMode === 'cards' ? 'bg-white text-orange-700 shadow-sm font-bold' : 'text-zinc-600'
                 }`}
                 title="Candidate Cards View"
               >
@@ -404,7 +404,7 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
               <button
                 onClick={() => setViewMode('kanban')}
                 className={`p-1.5 rounded-lg transition cursor-pointer ${
-                  viewMode === 'kanban' ? 'bg-white text-indigo-700 shadow-sm font-bold' : 'text-slate-600'
+                  viewMode === 'kanban' ? 'bg-white text-orange-700 shadow-sm font-bold' : 'text-zinc-600'
                 }`}
                 title="Kanban Board View"
               >
@@ -416,18 +416,18 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
             <div className="flex items-center space-x-1.5">
               <button
                 onClick={handleExportCSV}
-                className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer"
+                className="flex items-center space-x-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer"
                 title="Export filtered records to CSV spreadsheet"
               >
-                <Download className="w-3.5 h-3.5 text-slate-600" />
+                <Download className="w-3.5 h-3.5 text-zinc-600" />
                 <span>CSV</span>
               </button>
               <button
                 onClick={handleExportJSON}
-                className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer"
+                className="flex items-center space-x-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer"
                 title="Export complete dossier data to JSON"
               >
-                <Download className="w-3.5 h-3.5 text-slate-600" />
+                <Download className="w-3.5 h-3.5 text-zinc-600" />
                 <span>JSON</span>
               </button>
             </div>
@@ -435,17 +435,17 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
         </div>
 
         {/* Filter Controls Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-3 border-t border-slate-100 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-3 border-t border-zinc-100 text-xs">
           
           {/* Search Box */}
           <div className="relative lg:col-span-2">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search candidate name, email, city, ID, education..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-xs focus:border-indigo-500 outline-none"
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-zinc-300 text-xs focus:border-orange-500 outline-none"
             />
           </div>
 
@@ -658,8 +658,8 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
                     <tr 
                       key={app.id} 
                       onClick={() => setActiveDrawerAppId(app.id)}
-                      className={`hover:bg-slate-50/80 transition cursor-pointer ${
-                        isSelected ? 'bg-indigo-50/40' : ''
+                      className={`hover:bg-zinc-50/80 transition cursor-pointer ${
+                        isSelected ? 'bg-orange-50/40' : ''
                       }`}
                     >
                       <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
@@ -667,7 +667,7 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
                           type="checkbox"
                           checked={isSelected}
                           onChange={e => handleToggleSelect(app.id, e as any)}
-                          className="rounded accent-indigo-600 cursor-pointer"
+                          className="rounded accent-orange-600 cursor-pointer"
                         />
                       </td>
 

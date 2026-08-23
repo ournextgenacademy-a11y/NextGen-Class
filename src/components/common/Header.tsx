@@ -200,8 +200,8 @@ export const Header: React.FC<HeaderProps> = ({ onLogout, currentPath = '/apply'
                         No new notifications at this time.
                       </div>
                     ) : (
-                      unreadMessages.slice(0, 4).map(msg => (
-                        <div key={msg.id} className="p-3 hover:bg-zinc-50 transition text-xs">
+                      unreadMessages.slice(0, 4).map((msg, idx) => (
+                        <div key={`${msg.id || 'msg'}-${idx}`} className="p-3 hover:bg-zinc-50 transition text-xs">
                           <div className="font-semibold text-zinc-900 truncate">{msg.subject}</div>
                           <div className="text-[11px] text-zinc-600 line-clamp-2 mt-0.5">{msg.content}</div>
                           <div className="text-[10px] text-zinc-400 mt-1 flex items-center justify-between">

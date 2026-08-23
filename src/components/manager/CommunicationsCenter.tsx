@@ -872,8 +872,8 @@ export const CommunicationsCenter: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredLogs.map(log => (
-                      <tr key={log.id} className="hover:bg-slate-50/70 transition">
+                    filteredLogs.map((log, idx) => (
+                      <tr key={`${log.id || 'log'}-${idx}`} className="hover:bg-slate-50/70 transition">
                         <td className="p-4">
                           <div className="font-bold text-slate-900">{log.recipientName}</div>
                           <div className="text-[11px] text-slate-500 font-mono">{log.recipient}</div>

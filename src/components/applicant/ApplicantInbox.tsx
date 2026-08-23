@@ -66,22 +66,22 @@ export const ApplicantInbox: React.FC<ApplicantInboxProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-zinc-200">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 font-['Space_Grotesk'] flex items-center space-x-2">
-            <Inbox className="w-5 h-5 text-indigo-600" />
+          <h2 className="text-xl font-bold text-zinc-900 font-['Space_Grotesk'] flex items-center space-x-2">
+            <Inbox className="w-5 h-5 text-orange-600" />
             <span>Admissions Communications & Inbox</span>
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-zinc-500 mt-0.5">
             Official academy letters, screening notices, and direct messaging with NextGen admissions officers.
           </p>
         </div>
 
-        <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+        <div className="flex items-center space-x-1 bg-zinc-100 p-1 rounded-xl text-xs font-semibold">
           <button
             onClick={() => setFilterType('all')}
             className={`px-3 py-1.5 rounded-lg transition ${
-              filterType === 'all' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              filterType === 'all' ? 'bg-white text-orange-700 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'
             }`}
           >
             All ({userMessages.length})
@@ -89,7 +89,7 @@ export const ApplicantInbox: React.FC<ApplicantInboxProps> = ({
           <button
             onClick={() => setFilterType('letters')}
             className={`px-3 py-1.5 rounded-lg transition ${
-              filterType === 'letters' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              filterType === 'letters' ? 'bg-white text-orange-700 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'
             }`}
           >
             Offer Letters
@@ -97,7 +97,7 @@ export const ApplicantInbox: React.FC<ApplicantInboxProps> = ({
           <button
             onClick={() => setFilterType('direct')}
             className={`px-3 py-1.5 rounded-lg transition ${
-              filterType === 'direct' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              filterType === 'direct' ? 'bg-white text-orange-700 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'
             }`}
           >
             Direct Messages
@@ -105,7 +105,7 @@ export const ApplicantInbox: React.FC<ApplicantInboxProps> = ({
           <button
             onClick={() => setFilterType('broadcast')}
             className={`px-3 py-1.5 rounded-lg transition ${
-              filterType === 'broadcast' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              filterType === 'broadcast' ? 'bg-white text-orange-700 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'
             }`}
           >
             Broadcasts
@@ -116,47 +116,47 @@ export const ApplicantInbox: React.FC<ApplicantInboxProps> = ({
       {/* Main Inbox Layout (Two column) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Messages List (1 col) */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
+        <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden divide-y divide-zinc-100 max-h-[600px] overflow-y-auto">
           {filtered.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-400">
+            <div className="p-8 text-center text-xs text-zinc-400">
               No messages found in this folder.
             </div>
           ) : (
-            filtered.map(msg => {
+            filtered.map((msg, idx) => {
               const isSelected = activeMsg?.id === msg.id;
               const isFromMe = msg.senderId === currentUser.id;
 
               return (
                 <button
-                  key={msg.id}
+                  key={`${msg.id || 'msg'}-${idx}`}
                   onClick={() => setSelectedMessage(msg)}
                   className={`w-full text-left p-4 transition flex items-start space-x-3 cursor-pointer ${
-                    isSelected ? 'bg-indigo-50/80 border-l-4 border-indigo-600' : 'hover:bg-slate-50'
+                    isSelected ? 'bg-orange-50/80 border-l-4 border-orange-600' : 'hover:bg-zinc-50'
                   }`}
                 >
                   <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold ${
                     msg.type === 'offer_letter'
                       ? 'bg-amber-100 text-amber-800'
                       : msg.type === 'broadcast'
-                      ? 'bg-purple-100 text-purple-800'
-                      : 'bg-indigo-100 text-indigo-800'
+                      ? 'bg-zinc-200 text-zinc-800'
+                      : 'bg-orange-100 text-orange-800'
                   }`}>
                     {msg.type === 'offer_letter' ? <Award className="w-4 h-4" /> : msg.senderName[0]}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-bold text-slate-900 truncate">
+                      <span className="font-bold text-zinc-900 truncate">
                         {isFromMe ? 'You (Outgoing)' : msg.senderName}
                       </span>
-                      <span className="text-slate-400 text-[10px] shrink-0 ml-1">{msg.sentAt}</span>
+                      <span className="text-zinc-400 text-[10px] shrink-0 ml-1">{msg.sentAt}</span>
                     </div>
 
-                    <div className="text-xs font-semibold text-slate-800 truncate mt-0.5">
+                    <div className="text-xs font-semibold text-zinc-800 truncate mt-0.5">
                       {msg.subject}
                     </div>
 
-                    <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                    <div className="text-[11px] text-zinc-500 line-clamp-1 mt-0.5">
                       {msg.content}
                     </div>
 
@@ -173,40 +173,40 @@ export const ApplicantInbox: React.FC<ApplicantInboxProps> = ({
         </div>
 
         {/* Message Detail & Reply Box (2 cols) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between space-y-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-zinc-200 p-6 flex flex-col justify-between space-y-6">
           {activeMsg ? (
             <div className="space-y-6">
               {/* Message Header */}
-              <div className="border-b border-slate-100 pb-4 space-y-2">
+              <div className="border-b border-zinc-100 pb-4 space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
                     activeMsg.type === 'offer_letter'
                       ? 'bg-amber-100 text-amber-800 border border-amber-200'
                       : activeMsg.type === 'broadcast'
-                      ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                      : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                      ? 'bg-zinc-100 text-zinc-800 border border-zinc-200'
+                      : 'bg-orange-50 text-orange-700 border border-orange-100'
                   }`}>
                     {activeMsg.type.replace('_', ' ')}
                   </span>
-                  <span className="text-xs text-slate-400 font-medium flex items-center space-x-1">
+                  <span className="text-xs text-zinc-400 font-medium flex items-center space-x-1">
                     <Clock className="w-3.5 h-3.5" />
                     <span>{activeMsg.sentAt}</span>
                   </span>
                 </div>
 
-                <h3 className="text-lg font-bold text-slate-900 font-['Space_Grotesk'] leading-snug">
+                <h3 className="text-lg font-bold text-zinc-900 font-['Space_Grotesk'] leading-snug">
                   {activeMsg.subject}
                 </h3>
 
-                <div className="flex items-center space-x-2 text-xs text-slate-600">
-                  <span className="font-semibold text-slate-900">From: {activeMsg.senderName}</span>
+                <div className="flex items-center space-x-2 text-xs text-zinc-600">
+                  <span className="font-semibold text-zinc-900">From: {activeMsg.senderName}</span>
                   <span>•</span>
                   <span>To: {activeMsg.recipientName || currentUser.name}</span>
                 </div>
               </div>
 
               {/* Message Content Body */}
-              <div className="text-xs text-slate-800 leading-relaxed space-y-3 whitespace-pre-line bg-slate-50/50 p-5 rounded-xl border border-slate-100">
+              <div className="text-xs text-zinc-800 leading-relaxed space-y-3 whitespace-pre-line bg-zinc-50/50 p-5 rounded-xl border border-zinc-100">
                 {activeMsg.content}
               </div>
 
@@ -231,17 +231,17 @@ export const ApplicantInbox: React.FC<ApplicantInboxProps> = ({
               )}
 
               {activeMsg.subject.toLowerCase().includes('assessment') && onTakeAssessment && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between">
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <Sparkles className="w-6 h-6 text-indigo-600 shrink-0" />
+                    <Sparkles className="w-6 h-6 text-orange-600 shrink-0" />
                     <div>
-                      <div className="text-xs font-bold text-indigo-950">Online Screening Assessment Ready</div>
-                      <div className="text-[11px] text-indigo-700">30-minute timed logic and technical reasoning test.</div>
+                      <div className="text-xs font-bold text-orange-950">Online Screening Assessment Ready</div>
+                      <div className="text-[11px] text-orange-700">Timed logic and technical reasoning test.</div>
                     </div>
                   </div>
                   <button
                     onClick={onTakeAssessment}
-                    className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition cursor-pointer"
+                    className="flex items-center space-x-1.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition cursor-pointer"
                   >
                     <span>Start Test</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -250,19 +250,19 @@ export const ApplicantInbox: React.FC<ApplicantInboxProps> = ({
               )}
 
               {/* Reply Form */}
-              <form onSubmit={handleSendReply} className="pt-4 border-t border-slate-100 space-y-3">
-                <div className="text-xs font-bold text-slate-800">Send Reply or Question to Admissions Staff</div>
+              <form onSubmit={handleSendReply} className="pt-4 border-t border-zinc-100 space-y-3">
+                <div className="text-xs font-bold text-zinc-800">Send Reply or Question to Admissions Staff</div>
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
                     value={replyText}
                     onChange={e => setReplyText(e.target.value)}
                     placeholder="Type your message or inquiry..."
-                    className="flex-1 text-xs p-3 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    className="flex-1 text-xs p-3 rounded-xl border border-zinc-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none"
                   />
                   <button
                     type="submit"
-                    className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-3 rounded-xl text-xs shadow-sm transition cursor-pointer"
+                    className="flex items-center space-x-1.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold px-4 py-3 rounded-xl text-xs shadow-sm transition cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>Send</span>
@@ -271,7 +271,7 @@ export const ApplicantInbox: React.FC<ApplicantInboxProps> = ({
               </form>
             </div>
           ) : (
-            <div className="py-20 text-center text-xs text-slate-400">
+            <div className="py-20 text-center text-xs text-zinc-400">
               Select a message from the left to view details.
             </div>
           )}

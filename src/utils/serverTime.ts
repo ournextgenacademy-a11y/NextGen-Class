@@ -134,7 +134,7 @@ export function checkAssessmentAvailability(
         status: 'scheduled',
         reason: `Assessment is scheduled to open on ${openFormatted} (Server Time: ${serverNow.toLocaleTimeString()}). Please return at the scheduled start time.`,
         badgeLabel: 'SCHEDULED (UPCOMING)',
-        badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
+        badgeColor: 'bg-orange-100 text-orange-800 border-orange-200',
         opensAt,
         closesAt,
         formattedSchedule: `Opens: ${openFormatted}`,

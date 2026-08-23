@@ -206,7 +206,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (!email || !password || !firstName || !lastName) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail || !password || !firstName || !lastName) {
       setErrorMessage('Please fill in all required fields.');
       return;
     }
@@ -221,6 +223,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       return;
     }
 
+    // Client-side guard: verify email is not already used across system users
+    const savedUsersRaw = localStorage.getItem('nextgen_class_users_v2');
+    const existingUsers = savedUsersRaw ? JSON.parse(savedUsersRaw) : (allUsers || []);
+    const existingAccount = existingUsers.find((u: any) => u.email && u.email.toLowerCase() === cleanEmail);
+    if (existingAccount) {
+      setErrorMessage(`An account with email "${cleanEmail}" already exists. Multiple accounts with one profile are prohibited. Please sign in.`);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -230,7 +241,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         body: JSON.stringify({
           firstName,
           lastName,
-          email: email.trim().toLowerCase(),
+          email: cleanEmail,
           password,
           role: 'APPLICANT',
           phone,
@@ -241,7 +252,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMessage(data.error?.message || 'Registration could not be completed.');
+        setErrorMessage(data.error?.message || 'An account with this profile already exists. Please log in.');
         setIsLoading(false);
         return;
       }
@@ -253,6 +264,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         role: 'applicant' as UserRole,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       };
+
+      // Persist to user store to prevent future duplicate registration
+      const updatedUserList = [...existingUsers.filter((u: any) => u.id !== user.id), user];
+      localStorage.setItem('nextgen_class_users_v2', JSON.stringify(updatedUserList));
 
       localStorage.setItem('nextgen_class_is_authenticated', 'true');
       localStorage.setItem('nextgen_class_auth_token', data.token);
@@ -268,13 +283,24 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         type: 'success',
       });
     } catch (err: any) {
+      // If error is network related, ensure we don't duplicate
+      const duplicateCheck = existingUsers.find((u: any) => u.email && u.email.toLowerCase() === cleanEmail);
+      if (duplicateCheck) {
+        setErrorMessage(`An account with email "${cleanEmail}" already exists. Please log in.`);
+        setIsLoading(false);
+        return;
+      }
+
       const user = {
         id: `usr_${Date.now()}`,
         name: `${firstName} ${lastName}`,
-        email,
+        email: cleanEmail,
         role: 'applicant' as UserRole,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       };
+
+      const updatedUserList = [...existingUsers, user];
+      localStorage.setItem('nextgen_class_users_v2', JSON.stringify(updatedUserList));
 
       localStorage.setItem('nextgen_class_is_authenticated', 'true');
       localStorage.setItem('nextgen_class_auth_token', `jwt_${Date.now()}`);
@@ -481,46 +507,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           {/* MODE 1: LOGIN */}
           {authMode === 'login' && (
             <div className="space-y-4">
-              {/* Google Sign In Button */}
-              <div>
-                <button
-                  id="google-signin-btn"
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-center space-x-3 bg-white hover:bg-zinc-100 text-zinc-900 font-semibold py-2.5 px-4 rounded-xl text-xs border border-zinc-200 shadow-sm transition cursor-pointer disabled:opacity-60"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span>Continue with Google</span>
-                </button>
-
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-zinc-800"></div>
-                  </div>
-                  <div className="relative flex justify-center text-[10px] uppercase">
-                    <span className="bg-zinc-950 px-2.5 text-zinc-500 font-semibold tracking-wider">Or email & password</span>
-                  </div>
-                </div>
-              </div>
-
               <form onSubmit={handleLoginFormSubmit} className="space-y-3.5">
                 <div>
                   <label className="block text-xs font-medium text-zinc-300 mb-1">Email Address</label>

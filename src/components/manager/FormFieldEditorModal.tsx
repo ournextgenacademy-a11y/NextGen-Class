@@ -45,7 +45,7 @@ export const FIELD_TYPE_ICONS: Record<FormFieldType, React.ReactNode> = {
   dropdown: <List className="w-4 h-4" />,
   radio: <Radio className="w-4 h-4" />,
   checkbox: <CheckSquare className="w-4 h-4" />,
-  multiple_choice: <CheckSquare className="w-4 h-4 text-indigo-600" />,
+  multiple_choice: <CheckSquare className="w-4 h-4 text-orange-600" />,
   file_upload: <UploadCloud className="w-4 h-4" />,
   url: <Link2 className="w-4 h-4" />,
 };
@@ -137,7 +137,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
         {/* Header */}
         <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-indigo-600 text-white">
+            <div className="p-2 rounded-xl bg-orange-600 text-white shadow-sm shadow-orange-600/30">
               {FIELD_TYPE_ICONS[fieldType]}
             </div>
             <div>
@@ -164,7 +164,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
             onClick={() => setActiveTab('basic')}
             className={`px-4 py-2.5 text-xs font-bold border-b-2 transition cursor-pointer ${
               activeTab === 'basic'
-                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                ? 'border-orange-600 text-orange-700 bg-white rounded-t-lg shadow-xs'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -177,12 +177,12 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
               onClick={() => setActiveTab('options')}
               className={`px-4 py-2.5 text-xs font-bold border-b-2 transition cursor-pointer flex items-center space-x-1.5 ${
                 activeTab === 'options'
-                  ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                  ? 'border-orange-600 text-orange-700 bg-white rounded-t-lg shadow-xs'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <span>Choices & Options</span>
-              <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.2 rounded-full text-[10px]">
+              <span className="bg-orange-100 text-orange-700 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
                 {options.length}
               </span>
             </button>
@@ -193,7 +193,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
             onClick={() => setActiveTab('validation')}
             className={`px-4 py-2.5 text-xs font-bold border-b-2 transition cursor-pointer ${
               activeTab === 'validation'
-                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                ? 'border-orange-600 text-orange-700 bg-white rounded-t-lg shadow-xs'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -231,11 +231,11 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
                       }}
                       className={`flex items-center space-x-2 p-2.5 rounded-xl border text-xs text-left transition cursor-pointer ${
                         fieldType === typeKey
-                          ? 'border-indigo-600 bg-indigo-50/70 text-indigo-900 font-bold shadow-sm'
+                          ? 'border-orange-600 bg-orange-50/70 text-orange-950 font-bold shadow-xs'
                           : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
                       }`}
                     >
-                      <div className={`p-1 rounded-lg ${fieldType === typeKey ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      <div className={`p-1 rounded-lg ${fieldType === typeKey ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                         {FIELD_TYPE_ICONS[typeKey]}
                       </div>
                       <span className="truncate">{FIELD_TYPE_LABELS[typeKey]}</span>
@@ -255,7 +255,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
                   value={label}
                   onChange={e => setLabel(e.target.value)}
                   placeholder="e.g. Years of professional programming experience"
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
                 />
               </div>
 
@@ -269,7 +269,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   placeholder="Provide additional instructions, formats, or criteria for the applicant..."
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                  className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
                 />
               </div>
 
@@ -284,7 +284,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
                     value={placeholder}
                     onChange={e => setPlaceholder(e.target.value)}
                     placeholder="e.g. https://github.com/username or Select highest qualification..."
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                    className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
                   />
                 </div>
               )}
@@ -299,7 +299,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
                   type="button"
                   onClick={() => setRequired(!required)}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    required ? 'bg-indigo-600' : 'bg-slate-300'
+                    required ? 'bg-orange-600' : 'bg-slate-300'
                   }`}
                 >
                   <span
@@ -323,7 +323,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowBulkOptions(!showBulkOptions)}
-                  className="text-xs text-indigo-600 font-semibold hover:text-indigo-800 underline cursor-pointer"
+                  className="text-xs text-orange-600 font-semibold hover:text-orange-800 underline cursor-pointer"
                 >
                   {showBulkOptions ? 'Individual View' : 'Bulk Paste Options'}
                 </button>
@@ -336,13 +336,13 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
                     value={bulkOptionsText}
                     onChange={e => setBulkOptionsText(e.target.value)}
                     placeholder="Option 1&#10;Option 2&#10;Option 3&#10;(Separate with commas, semicolons, or linebreaks)"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 bg-white"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 bg-white"
                   />
                   <div className="flex justify-end">
                     <button
                       type="button"
                       onClick={handleBulkOptionsApply}
-                      className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition cursor-pointer"
+                      className="px-3 py-1.5 bg-orange-600 text-white text-xs font-bold rounded-lg hover:bg-orange-700 transition cursor-pointer"
                     >
                       Apply Bulk List
                     </button>
@@ -361,7 +361,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
                           updated[idx] = e.target.value;
                           setOptions(updated);
                         }}
-                        className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 bg-white"
+                        className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-orange-500 bg-white"
                       />
                       <button
                         type="button"
@@ -386,7 +386,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
                         }
                       }}
                       placeholder="Add another option choice..."
-                      className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 bg-white"
+                      className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-orange-500 bg-white"
                     />
                     <button
                       type="button"
@@ -501,7 +501,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
                               setValidationRules({ ...validationRules, allowedFileExtensions: next });
                             }}
                             className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold uppercase transition cursor-pointer ${
-                              isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              isSelected ? 'bg-orange-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                           >
                             .{ext}
@@ -540,7 +540,7 @@ export const FormFieldEditorModal: React.FC<FormFieldEditorModalProps> = ({
             </button>
             <button
               type="submit"
-              className="flex items-center space-x-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/20 transition cursor-pointer"
+              className="flex items-center space-x-1.5 px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl shadow-md shadow-orange-600/20 transition cursor-pointer"
             >
               <Check className="w-3.5 h-3.5" />
               <span>{field ? 'Save Field Changes' : 'Add Field to Section'}</span>

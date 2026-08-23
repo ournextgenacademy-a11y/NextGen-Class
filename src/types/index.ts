@@ -102,6 +102,7 @@ export type FormStatus = 'draft' | 'published' | 'archived';
 export interface ApplicationForm {
   id: string;
   programmeId: string;
+  programId?: string; // Standard alias for programmeId
   cohortId?: string | null;
   title: string;
   description?: string;

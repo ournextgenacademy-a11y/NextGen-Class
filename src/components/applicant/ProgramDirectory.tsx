@@ -56,30 +56,30 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 rounded-2xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-900 rounded-2xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden border border-zinc-800">
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center space-x-2 bg-indigo-500/20 text-indigo-300 text-xs font-semibold px-3 py-1 rounded-full border border-indigo-400/30 mb-3">
-            <Sparkles className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center space-x-2 bg-orange-500/20 text-orange-300 text-xs font-semibold px-3 py-1 rounded-full border border-orange-400/30 mb-3">
+            <Sparkles className="w-3.5 h-3.5 text-orange-400" />
             <span>NextGen Academy • Global Tech Flagships</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold font-['Space_Grotesk'] tracking-tight">
             Explore Academy Programmes & Cohorts
           </h2>
-          <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
+          <p className="text-xs sm:text-sm text-zinc-300 mt-2 leading-relaxed">
             Rigorous technical training designed to accelerate African engineers and innovators into global technology leaders. Fully configured through the NextGen Class management system.
           </p>
         </div>
 
         {/* Search & Category Filter */}
-        <div className="mt-6 pt-6 border-t border-slate-800 flex flex-wrap items-center gap-3 relative z-10">
+        <div className="mt-6 pt-6 border-t border-zinc-800 flex flex-wrap items-center gap-3 relative z-10">
           <div className="relative flex-1 min-w-[240px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search programmes by skill (e.g. LLMs, React, PyTorch, Docker)..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-800/80 border border-slate-700 text-white placeholder-slate-400 text-xs pl-10 pr-4 py-2.5 rounded-xl focus:border-indigo-400 focus:outline-none"
+              className="w-full bg-zinc-850 border border-zinc-700 text-white placeholder-zinc-400 text-xs pl-10 pr-4 py-2.5 rounded-xl focus:border-orange-400 focus:outline-none"
             />
           </div>
 
@@ -90,8 +90,8 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
                 onClick={() => setSelectedCategory(cat)}
                 className={`text-xs px-3 py-2 rounded-xl whitespace-nowrap font-medium transition cursor-pointer ${
                   selectedCategory === cat
-                    ? 'bg-indigo-600 text-white font-semibold shadow-sm'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                    ? 'bg-orange-600 text-white font-semibold shadow-sm'
+                    : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-750 hover:text-white'
                 }`}
               >
                 {cat}
@@ -214,33 +214,33 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
 
       {/* Program Detail Modal */}
       {selectedProgramModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-zinc-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-zinc-200 max-h-[85vh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                <span className="text-[11px] font-semibold text-orange-700 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-100">
                   {selectedProgramModal.category}
                 </span>
-                <h2 className="text-xl font-bold text-slate-900 mt-2 font-['Space_Grotesk']">
+                <h2 className="text-xl font-bold text-zinc-900 mt-2 font-['Space_Grotesk']">
                   {selectedProgramModal.name}
                 </h2>
-                <div className="text-xs text-slate-500 mt-0.5">
+                <div className="text-xs text-zinc-500 mt-0.5">
                   {selectedProgramModal.durationWeeks} Weeks • {selectedProgramModal.format} • {selectedProgramModal.code}
                 </div>
               </div>
               <button
                 onClick={() => setSelectedProgramModal(null)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition"
+                className="text-zinc-400 hover:text-zinc-700 p-1.5 rounded-lg hover:bg-zinc-100 transition"
               >
                 ✕
               </button>
             </div>
 
-            <div className="text-xs text-slate-700 space-y-3 leading-relaxed">
+            <div className="text-xs text-zinc-700 space-y-3 leading-relaxed">
               <p>{selectedProgramModal.description}</p>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                <div className="font-bold text-slate-800">Target Audience & Prerequisites:</div>
-                <ul className="list-disc list-inside text-slate-600 space-y-1">
+              <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-2">
+                <div className="font-bold text-zinc-800">Target Audience & Prerequisites:</div>
+                <ul className="list-disc list-inside text-zinc-600 space-y-1">
                   {selectedProgramModal.prerequisites.map((req, i) => (
                     <li key={i}>{req}</li>
                   ))}
@@ -249,20 +249,20 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
             </div>
 
             <div>
-              <div className="text-xs font-bold text-slate-800 mb-2">Core Skills & Frameworks Covered:</div>
+              <div className="text-xs font-bold text-zinc-800 mb-2">Core Skills & Frameworks Covered:</div>
               <div className="flex flex-wrap gap-2">
                 {selectedProgramModal.skillsTaught.map((skill, i) => (
-                  <span key={i} className="text-xs bg-indigo-50 text-indigo-900 font-medium px-3 py-1 rounded-lg border border-indigo-100">
+                  <span key={i} className="text-xs bg-orange-50 text-orange-900 font-medium px-3 py-1 rounded-lg border border-orange-100">
                     {skill}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+            <div className="pt-4 border-t border-zinc-100 flex items-center justify-end space-x-3">
               <button
                 onClick={() => setSelectedProgramModal(null)}
-                className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
+                className="px-4 py-2 text-xs font-medium text-zinc-600 hover:text-zinc-900"
               >
                 Close
               </button>
@@ -275,7 +275,7 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
                       setSelectedProgramModal(null);
                     }
                   }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-5 py-2 rounded-xl shadow transition"
+                  className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-5 py-2 rounded-xl shadow transition cursor-pointer"
                 >
                   Start Application
                 </button>

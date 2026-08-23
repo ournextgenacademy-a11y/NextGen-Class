@@ -47,15 +47,15 @@ export const AdmissionOfferModal: React.FC<AdmissionOfferModalProps> = ({
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Ribbon */}
-        <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white p-6 relative">
+        <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-orange-950 text-white p-6 relative border-b border-orange-600/30">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-indigo-200 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
+            className="absolute top-4 right-4 text-orange-200 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center space-x-2 text-amber-300 text-xs font-bold uppercase tracking-wider mb-2">
+          <div className="flex items-center space-x-2 text-orange-400 text-xs font-bold uppercase tracking-wider mb-2">
             <Sparkles className="w-4 h-4" />
             <span>Official Letter of Admission</span>
           </div>
@@ -63,13 +63,13 @@ export const AdmissionOfferModal: React.FC<AdmissionOfferModalProps> = ({
           <h2 className="text-2xl font-bold font-['Space_Grotesk'] text-white">
             Congratulations, {application.fullName}!
           </h2>
-          <p className="text-sm text-indigo-100 mt-1">
-            You have been granted admission to NextGen Academy's <strong className="text-white">{program.name}</strong>.
+          <p className="text-sm text-zinc-300 mt-1">
+            You have been granted admission to NextGen Academy's <strong className="text-orange-400">{program.name}</strong>.
           </p>
 
           {/* Scholarship Ribbon */}
           {application.scholarshipAwarded && (
-            <div className="mt-4 inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-md">
+            <div className="mt-4 inline-flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-md">
               <Award className="w-4 h-4" />
               <span>Awarded {application.scholarshipPercentage || 100}% NextGen Diversity & Excellence Scholarship</span>
             </div>
@@ -87,7 +87,7 @@ export const AdmissionOfferModal: React.FC<AdmissionOfferModalProps> = ({
             <div>
               <div className="text-slate-500 font-medium">Cohort Kickoff Date</div>
               <div className="font-bold text-slate-800 mt-0.5 flex items-center space-x-1">
-                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <Calendar className="w-3.5 h-3.5 text-orange-600" />
                 <span>{cohort.startDate}</span>
               </div>
             </div>
@@ -98,7 +98,7 @@ export const AdmissionOfferModal: React.FC<AdmissionOfferModalProps> = ({
           </div>
 
           {/* Official Letter Body */}
-          <div className="text-xs text-slate-700 space-y-3 leading-relaxed border-l-2 border-indigo-500 pl-4 py-1">
+          <div className="text-xs text-slate-700 space-y-3 leading-relaxed border-l-2 border-orange-500 pl-4 py-1">
             <p>
               The NextGen Admissions Board was deeply impressed by your background, application dossier, and outstanding screening score of <strong>{application.assessmentScore || 90}%</strong>.
             </p>
@@ -111,9 +111,9 @@ export const AdmissionOfferModal: React.FC<AdmissionOfferModalProps> = ({
           </div>
 
           {/* Terms & Code of Conduct */}
-          <div className="bg-indigo-50/60 rounded-xl p-4 border border-indigo-100 space-y-3">
-            <div className="flex items-center space-x-2 text-xs font-bold text-indigo-950">
-              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+          <div className="bg-orange-50/60 rounded-xl p-4 border border-orange-200 space-y-3">
+            <div className="flex items-center space-x-2 text-xs font-bold text-zinc-950">
+              <ShieldCheck className="w-4 h-4 text-orange-600" />
               <span>Learner Commitment & Code of Conduct</span>
             </div>
             <ul className="text-[11px] text-slate-600 space-y-1.5 list-disc list-inside">
@@ -128,7 +128,7 @@ export const AdmissionOfferModal: React.FC<AdmissionOfferModalProps> = ({
                 type="checkbox"
                 checked={acceptedTerms}
                 onChange={e => setAcceptedTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500"
               />
               <span className="text-xs font-semibold text-slate-800">
                 I accept the offer of admission and agree to the NextGen Academy Code of Conduct.

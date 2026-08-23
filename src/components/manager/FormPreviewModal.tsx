@@ -110,7 +110,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
             className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm bg-white transition ${
               hasError 
                 ? 'border-rose-400 focus:ring-2 focus:ring-rose-500' 
-                : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
+                : 'border-slate-300 focus:ring-2 focus:ring-orange-500'
             }`}
           />
         );
@@ -127,7 +127,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
             className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm bg-white transition ${
               hasError 
                 ? 'border-rose-400 focus:ring-2 focus:ring-rose-500' 
-                : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
+                : 'border-slate-300 focus:ring-2 focus:ring-orange-500'
             }`}
           />
         );
@@ -142,7 +142,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
               className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm bg-white transition ${
                 hasError 
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-500' 
-                  : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
+                  : 'border-slate-300 focus:ring-2 focus:ring-orange-500'
               }`}
             />
           </div>
@@ -159,7 +159,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
               className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm bg-white transition ${
                 hasError 
                   ? 'border-rose-400 focus:ring-2 focus:ring-rose-500' 
-                  : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
+                  : 'border-slate-300 focus:ring-2 focus:ring-orange-500'
               }`}
             />
             {field.validationRules?.maxLength && (
@@ -178,7 +178,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
             className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm bg-white transition ${
               hasError 
                 ? 'border-rose-400 focus:ring-2 focus:ring-rose-500' 
-                : 'border-slate-300 focus:ring-2 focus:ring-indigo-500'
+                : 'border-slate-300 focus:ring-2 focus:ring-orange-500'
             }`}
           >
             <option value="">{field.placeholder || 'Select an option...'}</option>
@@ -197,7 +197,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
               <label 
                 key={i} 
                 className={`flex items-center space-x-3 p-3 rounded-xl border cursor-pointer transition ${
-                  val === opt ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200 bg-white hover:border-slate-300'
+                  val === opt ? 'border-orange-600 bg-orange-50/50 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300'
                 }`}
               >
                 <input
@@ -205,7 +205,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
                   name={`preview-${field.id}`}
                   checked={val === opt}
                   onChange={() => handleInputChange(field.id, opt)}
-                  className="text-indigo-600 focus:ring-indigo-500"
+                  className="text-orange-600 focus:ring-orange-500"
                 />
                 <span className="text-xs sm:text-sm text-slate-800 font-medium">{opt}</span>
               </label>
@@ -224,7 +224,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
                 <label 
                   key={i} 
                   className={`flex items-center space-x-3 p-3 rounded-xl border cursor-pointer transition ${
-                    isChecked ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200 bg-white hover:border-slate-300'
+                    isChecked ? 'border-orange-600 bg-orange-50/50 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300'
                   }`}
                 >
                   <input
@@ -236,7 +236,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
                         : [...selectedArr, opt];
                       handleInputChange(field.id, next);
                     }}
-                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                    className="rounded text-orange-600 focus:ring-orange-500"
                   />
                   <span className="text-xs sm:text-sm text-slate-800 font-medium">{opt}</span>
                 </label>
@@ -249,7 +249,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
       case 'file_upload':
         return (
           <div className="border-2 border-dashed border-slate-300 rounded-xl p-5 text-center bg-slate-50/50 hover:bg-slate-50 transition cursor-pointer">
-            <UploadCloud className="w-7 h-7 text-indigo-600 mx-auto mb-1.5" />
+            <UploadCloud className="w-7 h-7 text-orange-600 mx-auto mb-1.5" />
             <div className="text-xs font-bold text-slate-800">
               {val ? `Selected: ${(val as string).split('/').pop() || 'sample_document.pdf'}` : 'Click or Drag document here to upload'}
             </div>
@@ -280,12 +280,12 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
       {/* Top Preview Bar */}
       <div className="w-full max-w-5xl bg-slate-900 text-white rounded-t-2xl px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 border border-slate-800 shadow-xl">
         <div className="flex items-center space-x-3">
-          <div className="p-1.5 rounded-lg bg-indigo-600 text-white">
+          <div className="p-1.5 rounded-lg bg-orange-600 text-white shadow-sm shadow-orange-600/30">
             <Eye className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
+              <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">
                 Candidate Experience Preview
               </span>
               <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded font-mono text-slate-300">
@@ -304,7 +304,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
             type="button"
             onClick={() => setDeviceMode('desktop')}
             className={`p-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer ${
-              deviceMode === 'desktop' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+              deviceMode === 'desktop' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'
             }`}
             title="Desktop View (100%)"
           >
@@ -315,7 +315,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
             type="button"
             onClick={() => setDeviceMode('tablet')}
             className={`p-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer ${
-              deviceMode === 'tablet' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+              deviceMode === 'tablet' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'
             }`}
             title="Tablet View (768px)"
           >
@@ -326,7 +326,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
             type="button"
             onClick={() => setDeviceMode('mobile')}
             className={`p-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer ${
-              deviceMode === 'mobile' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+              deviceMode === 'mobile' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'
             }`}
             title="Mobile View (375px)"
           >
@@ -356,8 +356,8 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
           }`}
         >
           {/* Simulated Applicant Screen Header */}
-          <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-6 text-white">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-1">
+          <div className="bg-slate-900 p-6 text-white border-b border-slate-800">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-1">
               {programTitle} • Application Dossier
             </div>
             <h2 className="text-lg sm:text-xl font-bold font-['Space_Grotesk'] text-white">
@@ -379,7 +379,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
                     onClick={() => setCurrentSectionIndex(idx)}
                     className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition whitespace-nowrap cursor-pointer ${
                       currentSectionIndex === idx
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-orange-600 text-white shadow-xs'
                         : idx < currentSectionIndex
                           ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-700/50'
                           : 'bg-slate-800 text-slate-400'
@@ -423,7 +423,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
               {currentSection ? (
                 <div>
                   <div className="border-b border-slate-100 pb-3 mb-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                    <div className="text-xs font-bold uppercase tracking-wider text-orange-600">
                       Section {currentSectionIndex + 1} of {sections.length}
                     </div>
                     <h3 className="text-base font-bold text-slate-900 font-['Space_Grotesk'] mt-0.5">
@@ -497,7 +497,7 @@ export const FormPreviewModal: React.FC<FormPreviewModalProps> = ({
               <button
                 type="button"
                 onClick={handleNextSection}
-                className="flex items-center space-x-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/20 transition cursor-pointer"
+                className="flex items-center space-x-1.5 px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl shadow-md shadow-orange-600/20 transition cursor-pointer"
               >
                 <span>{currentSectionIndex === sections.length - 1 ? 'Complete & Submit Test' : 'Continue to Next Section'}</span>
                 <ChevronRight className="w-4 h-4" />

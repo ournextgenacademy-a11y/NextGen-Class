@@ -107,11 +107,11 @@ interface AppContextType {
   addSectionToForm: (formId: string, section: Omit<ApplicationFormSection, 'id' | 'formId' | 'fields'>) => ApplicationFormSection;
   updateSectionInForm: (formId: string, sectionId: string, updates: Partial<ApplicationFormSection>) => void;
   deleteSectionFromForm: (formId: string, sectionId: string) => void;
-  reorderSectionsInForm: (formId: string, sourceIndex: number, destIndex: number) => void;
+  reorderSectionsInForm: (formId: string, sourceIndexOrIds: number | string[], destIndex?: number) => void;
   addFieldToSection: (formId: string, sectionId: string, field: Omit<ApplicationFormField, 'id' | 'formId' | 'sectionId'>) => ApplicationFormField;
   updateFieldInSection: (formId: string, sectionId: string, fieldId: string, updates: Partial<ApplicationFormField>) => void;
   deleteFieldFromSection: (formId: string, sectionId: string, fieldId: string) => void;
-  reorderFieldsInSection: (formId: string, sectionId: string, sourceIndex: number, destIndex: number) => void;
+  reorderFieldsInSection: (formId: string, sectionId: string, sourceIndexOrIds: number | string[], destIndex?: number) => void;
   bulkImportFieldsToForm: (formId: string, csvData: string, mode?: 'replace' | 'append') => { success: boolean; importedCount: number; errors: BulkUploadValidationError[] };
   getPublishedFormForProgramme: (programmeId: string, cohortId?: string) => ApplicationForm | undefined;
 
@@ -321,8 +321,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [messages, setMessages] = useState<CommunicationMessage[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.MESSAGES);
-    return saved ? JSON.parse(saved) : SEED_MESSAGES;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.MESSAGES);
+      if (!saved) return SEED_MESSAGES;
+      const parsed: CommunicationMessage[] = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return SEED_MESSAGES;
+      const seen = new Set<string>();
+      const deduplicated: CommunicationMessage[] = [];
+      for (let i = 0; i < parsed.length; i++) {
+        let msg = parsed[i];
+        if (!msg || typeof msg !== 'object') continue;
+        if (!msg.id || seen.has(msg.id)) {
+          msg = { ...msg, id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7) + '-' + i };
+        }
+        seen.add(msg.id);
+        deduplicated.push(msg);
+      }
+      return deduplicated;
+    } catch {
+      return SEED_MESSAGES;
+    }
   });
 
   const [templates, setTemplates] = useState<CommunicationTemplate[]>(() => {
@@ -427,11 +445,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const sendMessage = (msgData: Omit<CommunicationMessage, 'id' | 'sentAt' | 'status'>) => {
     const newMsg: CommunicationMessage = {
       ...msgData,
-      id: 'msg-' + Date.now(),
+      id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
       sentAt: new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
       status: 'delivered',
     };
-    setMessages(prev => [newMsg, ...prev]);
+    setMessages(prev => [newMsg, ...prev.filter(m => m.id !== newMsg.id)]);
   };
 
   const triggerNotification = async (
@@ -464,7 +482,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCommunicationLogs(prev => [result.log!, ...prev]);
     }
     if (result.inAppMessage) {
-      setMessages(prev => [result.inAppMessage!, ...prev]);
+      setMessages(prev => [result.inAppMessage!, ...prev.filter(m => m.id !== result.inAppMessage!.id)]);
     }
 
     return result;
@@ -573,7 +591,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetProgram = programs.find(p => p.id === targetCohort?.programId);
 
     const newBroadcast: CommunicationMessage = {
-      id: 'msg-bc-' + Date.now(),
+      id: 'msg-bc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
       senderId: currentUser.id,
       senderName: currentUser.name,
       senderRole: currentUser.role,
@@ -588,7 +606,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       tags: tags || ['Cohort Broadcast'],
     };
 
-    setMessages(prev => [newBroadcast, ...prev]);
+    setMessages(prev => [newBroadcast, ...prev.filter(m => m.id !== newBroadcast.id)]);
     addToast({
       title: 'Cohort Broadcast Dispatched 📣',
       message: `Delivered to candidates in ${targetCohort?.name || 'cohort'}.`,
@@ -664,7 +682,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetProg = targetCohort ? programs.find(p => p.id === targetCohort.programId) : undefined;
 
     const newBroadcastMsg: CommunicationMessage = {
-      id: 'msg-bc-' + Date.now(),
+      id: 'msg-bc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
       senderId: currentUser.id,
       senderName: currentUser.name,
       senderRole: currentUser.role,
@@ -686,7 +704,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'sent',
       tags: tags || ['Broadcast', `${count} Recipients`],
     };
-    setMessages(prev => [newBroadcastMsg, ...prev]);
+    setMessages(prev => [newBroadcastMsg, ...prev.filter(m => m.id !== newBroadcastMsg.id)]);
 
     const activeChannels = Object.entries(channels)
       .filter(([_, v]) => v)
@@ -851,8 +869,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addForm = (formInput: Omit<ApplicationForm, 'id' | 'createdAt' | 'updatedAt' | 'version'>): ApplicationForm => {
     const now = new Date().toISOString();
+    const targetProgramId = (formInput as any).programmeId || (formInput as any).programId || '';
     const newForm: ApplicationForm = {
       ...formInput,
+      programmeId: targetProgramId,
+      programId: targetProgramId,
       id: 'form-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       version: 1,
       status: formInput.status || 'draft',
@@ -890,21 +911,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateForm = (id: string, updates: Partial<ApplicationForm>) => {
     const now = new Date().toISOString();
+    const targetProgramId = (updates as any).programmeId || (updates as any).programId;
     setForms(prev => prev.map(f => {
       if (f.id !== id) return f;
       return {
         ...f,
         ...updates,
+        ...(targetProgramId !== undefined ? { programmeId: targetProgramId, programId: targetProgramId } : {}),
         updatedAt: now,
       };
     }));
   };
 
   const deleteForm = (id: string) => {
-    setForms(prev => prev.filter(f => f.id !== id));
-    if (activeFormId === id) {
-      setActiveFormId(null);
-    }
+    setForms(prev => {
+      const remaining = prev.filter(f => f.id !== id);
+      if (activeFormId === id) {
+        setActiveFormId(remaining.length > 0 ? remaining[0].id : null);
+      }
+      return remaining;
+    });
     addToast({
       title: 'Form Deleted',
       message: 'Application form has been removed.',
@@ -916,9 +942,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const target = forms.find(f => f.id === id);
     if (!target) return { success: false, errors: ['Form not found.'] };
 
+    const targetProgramId = target.programmeId || (target as any).programId;
     const errors: string[] = [];
     if (!target.title.trim()) errors.push('Form title cannot be empty.');
-    if (!target.programmeId) errors.push('Form must be associated with a target Programme.');
+    if (!targetProgramId) errors.push('Form must be associated with a target Programme.');
     if (target.sections.length === 0) errors.push('Form must contain at least 1 section.');
     
     const totalFields = target.sections.reduce((acc, s) => acc + s.fields.length, 0);
@@ -946,10 +973,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const now = new Date().toISOString();
     setForms(prev => prev.map(f => {
-      // If publishing for a programme/cohort, unpublish older active forms for the same scope if desired
       if (f.id === id) {
         return {
           ...f,
+          programmeId: targetProgramId,
+          programId: targetProgramId,
           status: 'published',
           publishedAt: now,
           updatedAt: now,
@@ -1086,14 +1114,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const reorderSectionsInForm = (formId: string, sourceIndex: number, destIndex: number) => {
+  const reorderSectionsInForm = (formId: string, sourceIndexOrIds: number | string[], destIndex?: number) => {
     setForms(prev => prev.map(f => {
       if (f.id !== formId) return f;
-      const reordered: ApplicationFormSection[] = [...f.sections];
-      const [moved] = reordered.splice(sourceIndex, 1);
-      if (!moved) return f;
-      reordered.splice(destIndex, 0, moved);
-      const updated: ApplicationFormSection[] = reordered.map((sec, idx) => ({ ...sec, displayOrder: idx + 1 }));
+      
+      let updated: ApplicationFormSection[] = [];
+      if (Array.isArray(sourceIndexOrIds)) {
+        // Reorder by list of IDs
+        const idMap = new Map<string, ApplicationFormSection>(f.sections.map(s => [s.id, s]));
+        const orderedFromIds: ApplicationFormSection[] = [];
+        sourceIndexOrIds.forEach(id => {
+          const s = idMap.get(id);
+          if (s) {
+            orderedFromIds.push(s);
+            idMap.delete(id);
+          }
+        });
+        // append any remaining
+        idMap.forEach(s => orderedFromIds.push(s));
+        updated = orderedFromIds.map((sec, idx) => ({ ...sec, displayOrder: idx + 1 }));
+      } else if (typeof sourceIndexOrIds === 'number' && typeof destIndex === 'number') {
+        const reordered: ApplicationFormSection[] = [...f.sections];
+        const [moved] = reordered.splice(sourceIndexOrIds, 1);
+        if (!moved) return f;
+        reordered.splice(destIndex, 0, moved);
+        updated = reordered.map((sec, idx) => ({ ...sec, displayOrder: idx + 1 }));
+      } else {
+        return f;
+      }
+
       return {
         ...f,
         updatedAt: new Date().toISOString(),
@@ -1174,7 +1223,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const reorderFieldsInSection = (formId: string, sectionId: string, sourceIndex: number, destIndex: number) => {
+  const reorderFieldsInSection = (formId: string, sectionId: string, sourceIndexOrIds: number | string[], destIndex?: number) => {
     setForms(prev => prev.map(f => {
       if (f.id !== formId) return f;
       return {
@@ -1182,11 +1231,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatedAt: new Date().toISOString(),
         sections: f.sections.map(s => {
           if (s.id !== sectionId) return s;
-          const reordered: ApplicationFormField[] = [...s.fields];
-          const [moved] = reordered.splice(sourceIndex, 1);
-          if (!moved) return s;
-          reordered.splice(destIndex, 0, moved);
-          const updated: ApplicationFormField[] = reordered.map((fld, idx) => ({ ...fld, displayOrder: idx + 1 }));
+          
+          let updated: ApplicationFormField[] = [];
+          if (Array.isArray(sourceIndexOrIds)) {
+            // Reorder by list of field IDs
+            const idMap = new Map<string, ApplicationFormField>(s.fields.map(fld => [fld.id, fld]));
+            const orderedFromIds: ApplicationFormField[] = [];
+            sourceIndexOrIds.forEach(id => {
+              const fld = idMap.get(id);
+              if (fld) {
+                orderedFromIds.push(fld);
+                idMap.delete(id);
+              }
+            });
+            idMap.forEach(fld => orderedFromIds.push(fld));
+            updated = orderedFromIds.map((fld, idx) => ({ ...fld, displayOrder: idx + 1 }));
+          } else if (typeof sourceIndexOrIds === 'number' && typeof destIndex === 'number') {
+            const reordered: ApplicationFormField[] = [...s.fields];
+            const [moved] = reordered.splice(sourceIndexOrIds, 1);
+            if (!moved) return s;
+            reordered.splice(destIndex, 0, moved);
+            updated = reordered.map((fld, idx) => ({ ...fld, displayOrder: idx + 1 }));
+          } else {
+            return s;
+          }
+
           return {
             ...s,
             fields: updated,
@@ -1269,7 +1338,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const getPublishedFormForProgramme = (programmeId: string, cohortId?: string): ApplicationForm | undefined => {
     // Look first for cohort-specific published form, then fall back to programme published form
-    const publishedForms = forms.filter(f => f.status === 'published' && f.programmeId === programmeId);
+    const publishedForms = forms.filter(f => f.status === 'published' && (f.programmeId === programmeId || f.programId === programmeId));
     if (cohortId) {
       const cohortForm = publishedForms.find(f => f.cohortId === cohortId);
       if (cohortForm) return cohortForm;
