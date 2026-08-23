@@ -63,6 +63,7 @@ export const ProgramCohortManager: React.FC = () => {
   const [showViewProgramModal, setShowViewProgramModal] = useState(false);
   const [viewingProgram, setViewingProgram] = useState<Program | null>(null);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
+  const [programToDelete, setProgramToDelete] = useState<Program | null>(null);
   const [programForm, setProgramForm] = useState({
     name: '',
     code: '',
@@ -575,6 +576,13 @@ export const ProgramCohortManager: React.FC = () => {
                           <Check className="w-4 h-4" />
                         </button>
                       )}
+                      <button
+                        onClick={() => setProgramToDelete(prog)}
+                        className="p-1.5 text-rose-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                        title="Delete Programme"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
 
                     <button
@@ -925,20 +933,38 @@ export const ProgramCohortManager: React.FC = () => {
                 />
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowProgramModal(false)}
-                  className="px-4 py-2 font-semibold text-slate-600 hover:text-slate-900"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl transition shadow-sm"
-                >
-                  {editingProgram ? 'Save Changes' : 'Create Programme'}
-                </button>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                {editingProgram ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProgramToDelete(editingProgram);
+                      setShowProgramModal(false);
+                    }}
+                    className="text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-3 py-2 rounded-xl font-bold flex items-center space-x-1.5 transition text-xs cursor-pointer border border-rose-200"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Programme</span>
+                  </button>
+                ) : (
+                  <div></div>
+                )}
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowProgramModal(false)}
+                    className="px-4 py-2 font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl transition shadow-sm cursor-pointer"
+                  >
+                    {editingProgram ? 'Save Changes' : 'Create Programme'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1038,7 +1064,7 @@ export const ProgramCohortManager: React.FC = () => {
                     toggleProgramStatus(viewingProgram.id);
                     setShowViewProgramModal(false);
                   }}
-                  className="text-xs font-semibold text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg"
+                  className="text-xs font-semibold text-slate-700 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer"
                 >
                   {viewingProgram.status === 'active' ? 'Deactivate' : 'Activate'}
                 </button>
@@ -1047,9 +1073,19 @@ export const ProgramCohortManager: React.FC = () => {
                     archiveProgram(viewingProgram.id);
                     setShowViewProgramModal(false);
                   }}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-1.5 rounded-lg"
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer"
                 >
                   Archive
+                </button>
+                <button
+                  onClick={() => {
+                    setProgramToDelete(viewingProgram);
+                    setShowViewProgramModal(false);
+                  }}
+                  className="text-xs font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg flex items-center space-x-1 transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
                 </button>
               </div>
 
@@ -1058,7 +1094,7 @@ export const ProgramCohortManager: React.FC = () => {
                   setShowViewProgramModal(false);
                   openEditProgramModal(viewingProgram);
                 }}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
               >
                 Edit Programme
               </button>
@@ -1405,6 +1441,50 @@ export const ProgramCohortManager: React.FC = () => {
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs"
               >
                 Edit Cohort
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 5: DELETE PROGRAMME CONFIRMATION */}
+      {/* ========================================================================= */}
+      {programToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center space-x-3 text-rose-600">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Delete Programme</h3>
+                <p className="text-xs text-slate-500">Irreversible Action</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-slate-900 font-semibold">{programToDelete.name}</strong> ({programToDelete.code})? This will permanently remove the programme from the catalog and Firestore database.
+            </p>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setProgramToDelete(null)}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteProgram(programToDelete.id);
+                  setProgramToDelete(null);
+                }}
+                className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2 text-sm rounded-xl transition shadow-sm cursor-pointer flex items-center space-x-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Programme</span>
               </button>
             </div>
           </div>

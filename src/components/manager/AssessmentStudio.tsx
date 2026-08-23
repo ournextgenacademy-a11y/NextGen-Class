@@ -388,10 +388,8 @@ export const AssessmentStudio: React.FC = () => {
               {assessments.length > 1 && (
                 <button
                   onClick={() => {
-                    if (confirm(`Are you sure you want to delete "${activeAssessment.title}"?`)) {
-                      deleteAssessment(activeAssessment.id);
-                      setSelectedAssessmentId(assessments[0]?.id || '');
-                    }
+                    deleteAssessment(activeAssessment.id);
+                    setSelectedAssessmentId(assessments.find(a => a.id !== activeAssessment.id)?.id || '');
                   }}
                   className="p-2 bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 rounded-xl transition cursor-pointer"
                   title="Delete Assessment"
