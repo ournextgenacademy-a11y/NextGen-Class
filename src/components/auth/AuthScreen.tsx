@@ -5,12 +5,10 @@ import {
   Lock, 
   Mail, 
   ArrowRight, 
-  AlertCircle,
-  KeyRound,
-  CheckCircle2,
-  ArrowLeft,
-  ShieldCheck,
-  Sparkles
+  AlertCircle, 
+  KeyRound, 
+  CheckCircle2, 
+  ArrowLeft 
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { auth, googleProvider, db } from '../../firebase/config';
@@ -64,9 +62,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
-  // Concealed Admin Access Modal / Prompt
-  const [showConcealedAdminPrompt, setShowConcealedAdminPrompt] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -482,17 +477,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     }
   };
 
-  const handleQuickFillAdmin = () => {
-    setEmail('ournextgenacademy@gmail.com');
-    setPassword('Password123!');
-    setShowConcealedAdminPrompt(false);
-    addToast({
-      title: 'Admin Credentials Prepared',
-      message: 'Click "Sign In" to enter as Platform Administrator.',
-      type: 'info',
-    });
-  };
-
   return (
     <div className="min-h-screen bg-black text-white flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 font-['Plus_Jakarta_Sans'] relative overflow-hidden">
       {/* Sleek brand background ambient glow */}
@@ -869,49 +853,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
         </div>
 
-        {/* Concealed Admin / Staff Access Link in Footer */}
+        {/* Clean Footer */}
         <div className="mt-8 flex flex-col items-center justify-center space-y-2 text-center text-xs text-zinc-600">
           <div className="flex items-center space-x-3 text-[11px]">
             <span>NextGen Academy</span>
             <span>•</span>
             <span>Admissions & Assessment Gateway</span>
-            <span>•</span>
-            <button
-              id="concealed-admin-link"
-              type="button"
-              onClick={() => setShowConcealedAdminPrompt(!showConcealedAdminPrompt)}
-              className="text-zinc-700 hover:text-zinc-400 transition inline-flex items-center space-x-1 cursor-pointer"
-              title="Staff Access"
-            >
-              <Lock className="w-2.5 h-2.5" />
-              <span>Staff</span>
-            </button>
           </div>
-
-          {/* Concealed discrete admin prompt if triggered */}
-          {showConcealedAdminPrompt && (
-            <div className="w-full max-w-sm mt-3 p-3 bg-zinc-950 rounded-xl border border-zinc-800 text-left space-y-2 shadow-xl">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-zinc-300 flex items-center space-x-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-orange-500" />
-                  <span>Program Manager Access</span>
-                </span>
-                <span className="text-[10px] text-zinc-500">Admin Gateway</span>
-              </div>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
-                Log in with your administrator email (<span className="text-zinc-200 font-mono">ournextgenacademy@gmail.com</span>) or use the button below to populate credentials.
-              </p>
-              <button
-                id="prefill-admin-btn"
-                type="button"
-                onClick={handleQuickFillAdmin}
-                className="w-full py-1.5 px-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-orange-400 hover:text-orange-300 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center space-x-2"
-              >
-                <span>Fill Admin Credentials</span>
-                <ArrowRight className="w-3 h-3" />
-              </button>
-            </div>
-          )}
         </div>
 
       </div>
