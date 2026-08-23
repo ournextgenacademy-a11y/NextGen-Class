@@ -507,16 +507,6 @@ const MainLayout: React.FC = () => {
             <span>•</span>
             <span>Admissions, Assessments & Learning Platform</span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-4 text-[11px]">
-            <span className="bg-orange-50 text-orange-700 px-2.5 py-0.5 rounded-full font-mono font-semibold border border-orange-200">
-              Enterprise Governance
-            </span>
-            <span className="bg-zinc-100 text-zinc-800 px-2.5 py-0.5 rounded-full font-mono font-semibold border border-zinc-200">
-              Strict RBAC Isolation
-            </span>
-            <span className="text-zinc-600">Audit Trail Enabled</span>
-          </div>
         </div>
       </footer>
 
