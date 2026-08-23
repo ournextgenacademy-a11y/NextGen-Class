@@ -429,9 +429,21 @@ export async function dispatchNotificationEvent(params: {
   const subject = interpolateVariables(rawSubject, context);
   const content = interpolateVariables(rawBody, context);
 
-  const recipientEmail = context.applicant?.email || 'applicant@example.com';
-  const recipientName = context.applicant?.fullName || 'Applicant';
-  const recipientId = context.applicant?.id || 'applicant-user';
+  const recipientEmail = 
+    context.applicant?.email || 
+    (context.application as any)?.email || 
+    (context.customData?.recipientEmail as string) || 
+    'ournextgenacademy@gmail.com';
+  const recipientName = 
+    context.applicant?.fullName || 
+    (context.application as any)?.fullName || 
+    (context.customData?.recipientName as string) || 
+    'Candidate';
+  const recipientId = 
+    context.applicant?.id || 
+    (context.application as any)?.applicantId || 
+    (context.application as any)?.id || 
+    'applicant-user';
   const channels = channelsOverride || template?.channels || { email: true, inApp: true, sms: false };
 
   const nowIso = new Date().toISOString();

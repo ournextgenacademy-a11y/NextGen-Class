@@ -382,95 +382,140 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
               </div>
 
               {/* Form Responses Grouped by Sections (Form Definition) */}
-              {associatedForm && associatedForm.sections.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center justify-between">
-                    <span>Application Form Responses</span>
-                    <span className="text-[10px] text-indigo-600 font-semibold">{associatedForm.title}</span>
-                  </div>
+              {(() => {
+                const renderedCustomAnswerKeys = new Set<string>();
 
-                  {associatedForm.sections.map((sec, sIdx) => {
-                    const nonFileFields = sec.fields.filter(f => f.fieldType !== 'file_upload');
-                    if (nonFileFields.length === 0) return null;
-
-                    return (
-                      <div key={sec.id || sIdx} className="bg-indigo-50/30 p-4 rounded-xl border border-indigo-100/80 space-y-3">
-                        <div className="font-bold text-indigo-950 text-xs flex items-center space-x-2 border-b border-indigo-100 pb-2">
-                          <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
-                            {sIdx + 1}
-                          </span>
-                          <span>{sec.title}</span>
+                return (
+                  <div className="space-y-4">
+                    {associatedForm && associatedForm.sections.length > 0 ? (
+                      <>
+                        <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center justify-between">
+                          <span>Application Form Responses</span>
+                          <span className="text-[10px] text-indigo-600 font-semibold">{associatedForm.title}</span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {nonFileFields.map(f => {
-                            const ans = application.customAnswers?.[f.id] !== undefined
-                              ? application.customAnswers[f.id]
-                              : (application as any)[f.id];
+                        {associatedForm.sections.map((sec, sIdx) => {
+                          const nonFileFields = sec.fields.filter(f => f.fieldType !== 'file_upload');
+                          if (nonFileFields.length === 0) return null;
 
-                            if (ans === undefined || ans === null || ans === '') return null;
-
-                            return (
-                              <div key={f.id} className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
-                                <div className="text-[10px] text-slate-500 font-semibold">{f.label}</div>
-                                <div className="font-medium text-slate-900">
-                                  {Array.isArray(ans) ? ans.join(', ') : typeof ans === 'boolean' ? (ans ? 'Yes' : 'No') : String(ans)}
-                                </div>
+                          return (
+                            <div key={sec.id || sIdx} className="bg-indigo-50/30 p-4 rounded-xl border border-indigo-100/80 space-y-3">
+                              <div className="font-bold text-indigo-950 text-xs flex items-center space-x-2 border-b border-indigo-100 pb-2">
+                                <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
+                                  {sIdx + 1}
+                                </span>
+                                <span>{sec.title}</span>
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : application.customAnswers && Object.keys(application.customAnswers).length > 0 ? (
-                <div className="bg-indigo-50/40 p-4 rounded-xl border border-indigo-100 space-y-3">
-                  <div className="font-bold text-indigo-950 uppercase tracking-wider text-[11px]">
-                    Application Form Responses
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {Object.entries(application.customAnswers).map(([key, val]) => (
-                      <div key={key} className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
-                        <span className="text-[10px] text-indigo-800 font-semibold">{fieldLookup.get(key)?.label || key}:</span>
-                        <p className="text-slate-800 font-medium">
-                          {Array.isArray(val) ? val.join(', ') : String(val)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
 
-              {/* Standard Statements & Background (Only if provided and not already captured in custom form) */}
-              {(application.educationLevel || application.fieldOfStudy || application.employmentStatus || application.yearsExperience || application.programmingBackground) && !associatedForm && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {nonFileFields.map(f => {
+                                  // Track rendered keys
+                                  renderedCustomAnswerKeys.add(f.id);
+                                  renderedCustomAnswerKeys.add(f.label);
+
+                                  let ans = application.customAnswers?.[f.id] !== undefined
+                                    ? application.customAnswers[f.id]
+                                    : application.customAnswers?.[f.label] !== undefined
+                                    ? application.customAnswers[f.label]
+                                    : (application as any)[f.id];
+
+                                  // Fallback checks for standard field types
+                                  if ((ans === undefined || ans === null || ans === '') && f.label) {
+                                    const lowerLabel = f.label.toLowerCase();
+                                    if (lowerLabel.includes('education') || lowerLabel.includes('degree')) ans = application.educationLevel;
+                                    else if (lowerLabel.includes('study') || lowerLabel.includes('major')) ans = application.fieldOfStudy;
+                                    else if (lowerLabel.includes('employment') || lowerLabel.includes('job')) ans = application.employmentStatus;
+                                    else if (lowerLabel.includes('experience') || lowerLabel.includes('years')) ans = application.yearsExperience;
+                                    else if (lowerLabel.includes('programming') || lowerLabel.includes('coding')) ans = application.programmingBackground;
+                                    else if (lowerLabel.includes('motivation') || lowerLabel.includes('why')) ans = application.motivationStatement;
+                                    else if (lowerLabel.includes('goal') || lowerLabel.includes('career')) ans = application.goalsStatement;
+                                  }
+
+                                  if (ans === undefined || ans === null || ans === '') {
+                                    return (
+                                      <div key={f.id} className="bg-white p-3 rounded-lg border border-slate-200 space-y-1 opacity-75">
+                                        <div className="text-[10px] text-slate-500 font-semibold">{f.label}</div>
+                                        <div className="font-medium text-slate-400 italic text-[11px]">Not provided</div>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <div key={f.id} className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
+                                      <div className="text-[10px] text-slate-500 font-semibold">{f.label}</div>
+                                      <div className="font-medium text-slate-900 leading-relaxed">
+                                        {Array.isArray(ans) ? ans.join(', ') : typeof ans === 'boolean' ? (ans ? 'Yes' : 'No') : String(ans)}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    ) : null}
+
+                    {/* Additional Form Answers (if any customAnswers exist outside sections) */}
+                    {application.customAnswers && Object.keys(application.customAnswers).length > 0 && (
+                      (() => {
+                        const extraEntries = Object.entries(application.customAnswers).filter(
+                          ([k]) => !renderedCustomAnswerKeys.has(k)
+                        );
+                        if (extraEntries.length === 0) return null;
+
+                        return (
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                            <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
+                              Additional Questionnaire Responses
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {extraEntries.map(([key, val]) => (
+                                <div key={key} className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
+                                  <span className="text-[10px] text-slate-500 font-semibold">{fieldLookup.get(key)?.label || key}:</span>
+                                  <p className="text-slate-800 font-medium">
+                                    {Array.isArray(val) ? val.join(', ') : typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val)}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Standard Statements & Background */}
+              {(application.educationLevel || application.fieldOfStudy || application.employmentStatus || application.yearsExperience || application.programmingBackground) && (
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                   <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-                    Education & Background
+                    Education & Background Summary
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-slate-700">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-700">
                     {application.educationLevel && (
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Education</span>
-                        <strong>{application.educationLevel}</strong> {application.fieldOfStudy ? `(${application.fieldOfStudy})` : ''}
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="text-slate-500 block text-[10px] font-semibold">Education Level</span>
+                        <strong className="text-slate-900">{application.educationLevel}</strong> {application.fieldOfStudy ? `(${application.fieldOfStudy})` : ''}
                       </div>
                     )}
                     {application.employmentStatus && (
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Employment</span>
-                        <strong>{application.employmentStatus}</strong>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="text-slate-500 block text-[10px] font-semibold">Employment Status</span>
+                        <strong className="text-slate-900">{application.employmentStatus}</strong>
                       </div>
                     )}
                     {application.yearsExperience && (
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Experience</span>
-                        <strong>{application.yearsExperience}</strong>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="text-slate-500 block text-[10px] font-semibold">Experience</span>
+                        <strong className="text-slate-900">{application.yearsExperience}</strong>
                       </div>
                     )}
                     {application.programmingBackground && (
-                      <div>
-                        <span className="text-slate-400 block text-[10px]">Coding Proficiency</span>
-                        <strong>{application.programmingBackground}</strong>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="text-slate-500 block text-[10px] font-semibold">Coding Proficiency</span>
+                        <strong className="text-slate-900">{application.programmingBackground}</strong>
                       </div>
                     )}
                   </div>

@@ -982,62 +982,105 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
                 </div>
 
                 {/* Structured Form Responses Grouped by Form Sections */}
-                {associatedForm && associatedForm.sections.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                      Application Form Responses ({associatedForm.title})
-                    </div>
-                    {associatedForm.sections.map((sec, sIdx) => {
-                      const relevantFields = sec.fields.filter(f => f.fieldType !== 'file_upload');
-                      if (relevantFields.length === 0) return null;
+                {(() => {
+                  const renderedCustomAnswerKeys = new Set<string>();
 
-                      return (
-                        <div key={sec.id || sIdx} className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3">
-                          <div className="font-bold text-zinc-900 text-xs flex items-center space-x-2 border-b border-zinc-200/80 pb-2">
-                            <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
-                              {sIdx + 1}
-                            </span>
-                            <span>{sec.title}</span>
+                  return (
+                    <div className="space-y-4">
+                      {associatedForm && associatedForm.sections.length > 0 ? (
+                        <>
+                          <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
+                            Application Form Responses ({associatedForm.title})
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {relevantFields.map(f => {
-                              const ans = activeApp.customAnswers?.[f.id] !== undefined 
-                                ? activeApp.customAnswers[f.id] 
-                                : (activeApp as any)[f.id];
-                              
-                              if (ans === undefined || ans === null || ans === '') return null;
+                          {associatedForm.sections.map((sec, sIdx) => {
+                            const relevantFields = sec.fields.filter(f => f.fieldType !== 'file_upload');
+                            if (relevantFields.length === 0) return null;
 
-                              return (
-                                <div key={f.id} className="bg-white p-3 rounded-lg border border-zinc-200 space-y-1">
-                                  <div className="text-[10px] text-zinc-500 font-semibold">{f.label}</div>
-                                  <div className="font-medium text-zinc-900">
-                                    {Array.isArray(ans) ? ans.join(', ') : typeof ans === 'boolean' ? (ans ? 'Yes' : 'No') : String(ans)}
-                                  </div>
+                            return (
+                              <div key={sec.id || sIdx} className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3">
+                                <div className="font-bold text-zinc-900 text-xs flex items-center space-x-2 border-b border-zinc-200/80 pb-2">
+                                  <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                    {sIdx + 1}
+                                  </span>
+                                  <span>{sec.title}</span>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : activeApp.customAnswers && Object.keys(activeApp.customAnswers).length > 0 ? (
-                  <div className="space-y-2">
-                    <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                      Application Responses
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {relevantFields.map(f => {
+                                    renderedCustomAnswerKeys.add(f.id);
+                                    renderedCustomAnswerKeys.add(f.label);
+
+                                    let ans = activeApp.customAnswers?.[f.id] !== undefined 
+                                      ? activeApp.customAnswers[f.id] 
+                                      : activeApp.customAnswers?.[f.label] !== undefined
+                                      ? activeApp.customAnswers[f.label]
+                                      : (activeApp as any)[f.id];
+
+                                    if ((ans === undefined || ans === null || ans === '') && f.label) {
+                                      const lowerLabel = f.label.toLowerCase();
+                                      if (lowerLabel.includes('education') || lowerLabel.includes('degree')) ans = activeApp.educationLevel;
+                                      else if (lowerLabel.includes('study') || lowerLabel.includes('major')) ans = activeApp.fieldOfStudy;
+                                      else if (lowerLabel.includes('employment') || lowerLabel.includes('job')) ans = activeApp.employmentStatus;
+                                      else if (lowerLabel.includes('experience') || lowerLabel.includes('years')) ans = activeApp.yearsExperience;
+                                      else if (lowerLabel.includes('programming') || lowerLabel.includes('coding')) ans = activeApp.programmingBackground;
+                                      else if (lowerLabel.includes('motivation') || lowerLabel.includes('why')) ans = activeApp.motivationStatement;
+                                      else if (lowerLabel.includes('goal') || lowerLabel.includes('career')) ans = activeApp.goalsStatement;
+                                    }
+                                    
+                                    if (ans === undefined || ans === null || ans === '') {
+                                      return (
+                                        <div key={f.id} className="bg-white p-3 rounded-lg border border-zinc-200 space-y-1 opacity-75">
+                                          <div className="text-[10px] text-zinc-500 font-semibold">{f.label}</div>
+                                          <div className="font-medium text-zinc-400 italic text-[11px]">Not provided</div>
+                                        </div>
+                                      );
+                                    }
+
+                                    return (
+                                      <div key={f.id} className="bg-white p-3 rounded-lg border border-zinc-200 space-y-1">
+                                        <div className="text-[10px] text-zinc-500 font-semibold">{f.label}</div>
+                                        <div className="font-medium text-zinc-900 leading-relaxed">
+                                          {Array.isArray(ans) ? ans.join(', ') : typeof ans === 'boolean' ? (ans ? 'Yes' : 'No') : String(ans)}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      ) : null}
+
+                      {/* Additional Questionnaire Responses */}
+                      {activeApp.customAnswers && Object.keys(activeApp.customAnswers).length > 0 && (
+                        (() => {
+                          const extraEntries = Object.entries(activeApp.customAnswers).filter(
+                            ([k]) => !renderedCustomAnswerKeys.has(k)
+                          );
+                          if (extraEntries.length === 0) return null;
+
+                          return (
+                            <div className="space-y-2">
+                              <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
+                                Additional Questionnaire Responses
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                                {extraEntries.map(([k, val]) => (
+                                  <div key={k} className="bg-white p-3 rounded-lg border border-zinc-200">
+                                    <div className="text-[10px] text-zinc-500 font-semibold">{fieldLookup.get(k)?.label || k}</div>
+                                    <div className="font-medium text-zinc-900 mt-0.5">
+                                      {Array.isArray(val) ? val.join(', ') : typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val)}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()
+                      )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
-                      {Object.entries(activeApp.customAnswers).map(([k, val]) => (
-                        <div key={k} className="bg-white p-3 rounded-lg border border-zinc-200">
-                          <div className="text-[10px] text-zinc-500 font-semibold">{fieldLookup.get(k)?.label || k}</div>
-                          <div className="font-medium text-zinc-900 mt-0.5">
-                            {Array.isArray(val) ? val.join(', ') : String(val)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+                  );
+                })()}
 
                 {/* Candidate Statements if answered and not in form */}
                 {(activeApp.motivationStatement || activeApp.goalsStatement) && (

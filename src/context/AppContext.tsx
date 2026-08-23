@@ -1905,12 +1905,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateApplicationStatus = (appId: string, status: ApplicationStatus, note?: string) => {
     const now = new Date().toLocaleString();
+    let updatedAppRecord: Application | null = null;
     
     setApplications(prev => prev.map(app => {
       if (app.id !== appId) return app;
 
       const newTimeline = [...app.timeline, {
-        id: 't-' + Date.now(),
+        id: 't-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
         title: `Status Changed to ${((status as string) || '').replace('_', ' ').toUpperCase()}`,
         description: note || `Status updated by ${currentUser.name}.`,
         timestamp: now,
@@ -1919,39 +1920,85 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }];
 
       // If admitted, set offer date
-      const offerUpdates = status === 'admitted' ? {
+      const offerUpdates = (status === 'admitted' || status === 'accepted') ? {
         offerLetterSentDate: new Date().toISOString().split('T')[0],
         scholarshipAwarded: app.scholarshipAwarded ?? true,
         scholarshipPercentage: app.scholarshipPercentage ?? 100,
       } : {};
 
-      const updatedApp = {
+      const updatedApp: Application = {
         ...app,
         status,
         updatedDate: new Date().toISOString().split('T')[0],
         timeline: newTimeline,
         ...offerUpdates,
       };
+      updatedAppRecord = updatedApp;
       syncDocToFirestore('applications', appId, updatedApp);
       return updatedApp;
     }));
 
+    // Find the target application record
+    const targetApp = updatedAppRecord || applications.find(a => a.id === appId);
+    if (!targetApp) return;
+
     // Update cohort counts if admitted or enrolled
-    const targetApp = applications.find(a => a.id === appId);
-    if (targetApp && (status === 'admitted' || status === 'enrolled')) {
+    if (status === 'admitted' || status === 'accepted' || status === 'enrolled') {
       setCohorts(prev => prev.map(c => {
         if (c.id !== targetApp.cohortId) return c;
         return {
           ...c,
-          admittedCount: status === 'admitted' ? c.admittedCount + 1 : c.admittedCount,
-          enrolledCount: status === 'enrolled' ? c.enrolledCount + 1 : c.enrolledCount,
+          admittedCount: (status === 'admitted' || status === 'accepted') ? (c.admittedCount || 0) + 1 : c.admittedCount,
+          enrolledCount: status === 'enrolled' ? (c.enrolledCount || 0) + 1 : c.enrolledCount,
         };
       }));
     }
 
+    // Trigger automated notification event (Email + In-App)
+    const prog = programs.find(p => p.id === targetApp.programId);
+    const coh = cohorts.find(c => c.id === targetApp.cohortId);
+    const targetAsm = assessments.find(a => a.cohortId === targetApp.cohortId || a.programId === targetApp.programId);
+
+    const notificationContext: NotificationContext = {
+      applicant: {
+        id: targetApp.applicantId,
+        fullName: targetApp.fullName,
+        email: targetApp.email,
+        phone: targetApp.phone,
+      },
+      application: {
+        ...targetApp,
+        status,
+      },
+      cohort: coh,
+      programme: prog,
+      assessment: targetAsm,
+      deadline: coh?.applicationDeadline || 'September 15, 2026',
+      customData: {
+        status_note: note,
+        admissions_reason: note,
+      }
+    };
+
+    if (status === 'admitted' || status === 'accepted') {
+      triggerNotification('APPLICATION_ACCEPTED', notificationContext);
+    } else if (status === 'waitlisted') {
+      triggerNotification('APPLICATION_WAITLISTED', notificationContext);
+    } else if (status === 'rejected') {
+      triggerNotification('APPLICATION_REJECTED', notificationContext);
+    } else if (status === 'assessment_pending' || status === 'assessment_invited') {
+      triggerNotification('ASSESSMENT_OPENED', notificationContext);
+    } else if (status === 'assessment_completed') {
+      triggerNotification('ASSESSMENT_SUBMITTED', notificationContext);
+    } else if (status === 'submitted') {
+      triggerNotification('APPLICATION_SUBMITTED', notificationContext);
+    } else {
+      triggerNotification('APPLICATION_UPDATED', notificationContext);
+    }
+
     addToast({
       title: 'Status Updated',
-      message: `Applicant #${appId} moved to ${((status as string) || '').replace('_', ' ').toUpperCase()}.`,
+      message: `Applicant #${appId} (${targetApp.fullName}) moved to ${((status as string) || '').replace('_', ' ').toUpperCase()}. Automated notice dispatched to ${targetApp.email}.`,
       type: 'info',
     });
   };
@@ -2578,7 +2625,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         type: 'admissions',
       };
 
-      return {
+      const updatedApp: Application = {
         ...app,
         status: normalizedDecision,
         offerLetterSentDate: normalizedDecision === 'admitted' ? today : app.offerLetterSentDate,
@@ -2586,6 +2633,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         scholarshipPercentage: normalizedDecision === 'admitted' ? 100 : app.scholarshipPercentage,
         timeline: [timelineEvent, ...app.timeline],
       };
+      syncDocToFirestore('applications', applicationId, updatedApp);
+      return updatedApp;
     }));
 
     // 2. When ACCEPTED: Prepare applicant for future learner enrolment & create learner record according to defined transition workflow
@@ -2729,7 +2778,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Mark application as enrolled
     setApplications(prev => prev.map(app => {
       if (app.id !== applicationId) return app;
-      return {
+      const updatedApp: Application = {
         ...app,
         status: 'enrolled',
         offerAcceptedDate: today,
@@ -2745,6 +2794,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           },
         ],
       };
+      syncDocToFirestore('applications', applicationId, updatedApp);
+      return updatedApp;
     }));
 
     // Update cohort counts
