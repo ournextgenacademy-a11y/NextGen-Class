@@ -862,6 +862,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setPrograms(prev => [newProg, ...prev.filter(p => p.id !== newId)]);
     syncDocToFirestore('programmes', newId, newProg);
+    syncDocToFirestore('programs', newId, newProg);
 
     addToast({
       title: 'Programme Created',
@@ -877,6 +878,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (p.id !== id) return p;
       const updated = { ...p, ...updates, updatedAt: now };
       syncDocToFirestore('programmes', id, updated);
+      syncDocToFirestore('programs', id, updated);
       return updated;
     }));
     addToast({
@@ -892,6 +894,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (p.id !== id) return p;
       const updated = { ...p, status: 'archived' as const, updatedAt: now };
       syncDocToFirestore('programmes', id, updated);
+      syncDocToFirestore('programs', id, updated);
       return updated;
     }));
     addToast({
@@ -908,6 +911,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const nextStatus = p.status === 'active' ? 'draft' : 'active';
       const updated = { ...p, status: nextStatus as any, updatedAt: now };
       syncDocToFirestore('programmes', id, updated);
+      syncDocToFirestore('programs', id, updated);
       addToast({
         title: nextStatus === 'active' ? 'Programme Activated' : 'Programme Deactivated',
         message: `Programme is now ${(nextStatus || '').toUpperCase()}.`,
@@ -920,6 +924,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteProgram = (id: string) => {
     setPrograms(prev => prev.filter(p => p.id !== id));
     deleteDocFromFirestore('programmes', id);
+    deleteDocFromFirestore('programs', id);
     addToast({
       title: 'Programme Removed',
       message: 'Programme has been removed from catalog.',
@@ -931,8 +936,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addCohort = (cohortData: Omit<Cohort, 'id' | 'admittedCount' | 'enrolledCount'>): Cohort => {
     const newId = 'cohort-' + Date.now().toString(36);
     const now = new Date().toISOString();
+    const targetProgramId = cohortData.programId || (cohortData as any).programmeId || '';
     const newCohort: Cohort = {
       ...cohortData,
+      programId: targetProgramId,
+      programmeId: targetProgramId,
       id: newId,
       admittedCount: 0,
       enrolledCount: 0,
@@ -954,7 +962,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date().toISOString();
     setCohorts(prev => prev.map(c => {
       if (c.id !== id) return c;
-      const updated = { ...c, ...updates, updatedAt: now };
+      const targetProgramId = updates.programId || (updates as any).programmeId || c.programId || (c as any).programmeId;
+      const updated = { 
+        ...c, 
+        ...updates, 
+        programId: targetProgramId,
+        programmeId: targetProgramId,
+        updatedAt: now 
+      };
       syncDocToFirestore('cohorts', id, updated);
       return updated;
     }));

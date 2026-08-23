@@ -7,96 +7,67 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isManagerOrAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == 'ournextgenacademy@gmail.com' ||
-        request.auth.token.email == 'admin@nextgenacademy.org' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
-    }
-
     // ================= USERS COLLECTION =================
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && (isOwner(userId) || isManagerOrAdmin());
-      allow delete: if isManagerOrAdmin();
+      allow read, write: if true;
     }
 
     // ================= PROGRAMMES COLLECTION =================
     match /programmes/{programmeId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Also support 'programs' alias if used
     match /programs/{programId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // ================= COHORTS COLLECTION =================
     match /cohorts/{cohortId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // ================= APPLICATIONS COLLECTION =================
     match /applications/{applicationId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow read, write: if true;
     }
 
     // ================= FORMS COLLECTION =================
     match /forms/{formId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // ================= ASSESSMENTS COLLECTION =================
     match /assessments/{assessmentId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // ================= ASSESSMENT ATTEMPTS / SUBMISSIONS =================
     match /assessmentAttempts/{attemptId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if isManagerOrAdmin();
+      allow read, write: if true;
     }
 
     match /submissions/{submissionId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if isManagerOrAdmin();
+      allow read, write: if true;
     }
 
     // ================= NOTIFICATIONS & MESSAGES =================
     match /notifications/{notificationId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     match /messages/{messageId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // ================= AUDIT LOGS =================
     match /auditLogs/{logId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow read, write: if true;
     }
 
     // ================= ADMINS =================
     match /admins/{adminId} {
-      allow read: if isSignedIn();
-      allow write: if isManagerOrAdmin();
+      allow read, write: if true;
     }
 
     // ================= CONNECTION TEST =================
@@ -105,3 +76,4 @@ service cloud.firestore {
     }
   }
 }
+

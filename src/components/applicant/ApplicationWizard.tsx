@@ -57,7 +57,7 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
     preselectedProgramId || existingDraft?.programId || (availableCohorts[0]?.programId || programs[0]?.id || '')
   );
 
-  const availableCohortsForProg = availableCohorts.filter(c => c.programId === selectedProgId);
+  const availableCohortsForProg = availableCohorts.filter(c => c.programId === selectedProgId || (c as any).programmeId === selectedProgId);
 
   const [selectedCohId, setSelectedCohId] = useState<string>(
     preselectedCohortId || existingDraft?.cohortId || (availableCohortsForProg[0]?.id || availableCohorts[0]?.id || '')
@@ -458,7 +458,7 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {programs.map((prog) => {
                 const isSelected = selectedProgId === prog.id;
-                const cohCount = cohorts.filter(c => c.programId === prog.id && c.status !== 'archived').length;
+                const cohCount = cohorts.filter(c => (c.programId === prog.id || (c as any).programmeId === prog.id) && c.status !== 'archived').length;
 
                 return (
                   <div

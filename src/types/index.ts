@@ -144,6 +144,7 @@ export interface CustomFormField {
 export interface Cohort {
   id: string;
   programId: string;
+  programmeId?: string; // Standard alias for programId
   name: string;
   code: string;
   description?: string;

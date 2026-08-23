@@ -30,15 +30,23 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedProgramModal, setSelectedProgramModal] = useState<Program | null>(null);
 
-  const categories = ['All', 'Artificial Intelligence', 'Software Engineering', 'Data & Analytics', 'Cloud & DevOps'];
+  const categories = Array.from(
+    new Set([
+      'All',
+      ...programs.map(p => p.category).filter(Boolean),
+    ])
+  );
 
   const filteredPrograms = programs.filter(p => {
     if (p.status === 'archived') return false;
-    const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
-    const searchLower = (searchQuery || '').toLowerCase();
+    const matchesCategory = selectedCategory === 'All' || p.category?.toLowerCase() === selectedCategory.toLowerCase();
+    const searchLower = (searchQuery || '').toLowerCase().trim();
+    if (!searchLower) return matchesCategory;
     const matchesSearch = 
       (p.name || '').toLowerCase().includes(searchLower) ||
+      (p.code || '').toLowerCase().includes(searchLower) ||
       (p.description || '').toLowerCase().includes(searchLower) ||
+      (p.category || '').toLowerCase().includes(searchLower) ||
       (p.skillsTaught && Array.isArray(p.skillsTaught) ? p.skillsTaught.some(s => (s || '').toLowerCase().includes(searchLower)) : false);
     return matchesCategory && matchesSearch;
   });
@@ -105,7 +113,10 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
       {filteredPrograms.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredPrograms.map(program => {
-            const progCohorts = cohorts.filter(c => c.programId === program.id && c.status !== 'archived');
+            const progCohorts = cohorts.filter(c => 
+              (c.programId === program.id || (c as any).programmeId === program.id) && 
+              c.status !== 'archived'
+            );
             const activeOpenCohort = progCohorts.find(c => c.status === 'applications_open' || c.status === 'admissions_open' || c.status === 'assessment_phase') || progCohorts[0];
 
             return (
