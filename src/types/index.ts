@@ -160,6 +160,8 @@ export interface Cohort {
   scholarshipAvailable: boolean;
   assessmentId?: string;
   assessmentDeadline?: string;
+  formId?: string;
+  applicationFormId?: string;
   schedule: string;
   customFields?: CustomFormField[];
   createdAt?: string;

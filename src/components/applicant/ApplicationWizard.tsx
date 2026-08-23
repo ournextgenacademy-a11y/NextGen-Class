@@ -92,18 +92,18 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   const [formData, setFormData] = useState({
     fullName: existingDraft?.fullName || currentUser.name || '',
     email: existingDraft?.email || currentUser.email || '',
-    phone: existingDraft?.phone || currentUser.phone || '+234 800 000 0000',
+    phone: existingDraft?.phone || currentUser.phone || '',
     country: existingDraft?.country || 'Nigeria',
-    city: existingDraft?.city || 'Lagos',
-    gender: (existingDraft?.gender || 'Female') as 'Female' | 'Male' | 'Non-Binary' | 'Prefer not to say',
-    ageRange: (existingDraft?.ageRange || '25-34') as '18-24' | '25-34' | '35-44' | '45+',
+    city: existingDraft?.city || '',
+    gender: (existingDraft?.gender || 'Prefer not to say') as 'Female' | 'Male' | 'Non-Binary' | 'Prefer not to say',
+    ageRange: (existingDraft?.ageRange || '18-24') as '18-24' | '25-34' | '35-44' | '45+',
     
-    // Background defaults
-    educationLevel: (existingDraft?.educationLevel || 'Bachelor Degree') as any,
-    fieldOfStudy: existingDraft?.fieldOfStudy || 'Computer Science & Software Systems',
-    employmentStatus: (existingDraft?.employmentStatus || 'Employed full-time') as any,
-    yearsExperience: existingDraft?.yearsExperience || '2-3 years',
-    programmingBackground: (existingDraft?.programmingBackground || 'Intermediate (1-2 years)') as any,
+    // Background
+    educationLevel: (existingDraft?.educationLevel || '') as any,
+    fieldOfStudy: existingDraft?.fieldOfStudy || '',
+    employmentStatus: (existingDraft?.employmentStatus || '') as any,
+    yearsExperience: existingDraft?.yearsExperience || '',
+    programmingBackground: (existingDraft?.programmingBackground || '') as any,
     
     // Links & Portfolio
     linkedinUrl: existingDraft?.linkedinUrl || '',
@@ -128,6 +128,13 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
 
   const selectedCohort = cohorts.find(c => c.id === selectedCohId);
   const selectedProgram = programs.find(p => p.id === selectedProgId);
+
+  // Check if current authenticated applicant has already submitted for this cohort
+  const alreadySubmittedApp = applications.find(
+    a => (a.applicantId === currentUser.id || (a.email && currentUser.email && a.email.toLowerCase() === currentUser.email.toLowerCase())) &&
+         a.cohortId === selectedCohId &&
+         a.status !== 'draft'
+  );
 
   const handleCustomFieldChange = (fieldId: string, val: any) => {
     setFormData(prev => ({
@@ -294,6 +301,15 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
       return;
     }
 
+    if (alreadySubmittedApp) {
+      addToast({
+        title: 'Application Already Submitted',
+        message: `You have already submitted an application for this cohort (${alreadySubmittedApp.id}). Only one application is permitted per cohort.`,
+        type: 'error',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     const submissionPayload: Partial<Application> = {
@@ -343,6 +359,28 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12" id="application-wizard-container">
+      {/* Already Submitted Warning Banner */}
+      {alreadySubmittedApp && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-xs sm:text-sm">Application Already Submitted for this Cohort</div>
+              <div className="text-[11px] sm:text-xs text-amber-800 mt-0.5">
+                You have already submitted an application for <strong>{selectedCohort?.name || 'this cohort'}</strong> (Ref: <span className="font-mono font-bold">#{alreadySubmittedApp.id}</span> • Status: <span className="font-bold uppercase bg-amber-200/60 px-1.5 py-0.5 rounded text-amber-900">{alreadySubmittedApp.status}</span>). NextGen Academy permits one application per cohort.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setApplicantTab('overview')}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl whitespace-nowrap shadow-xs cursor-pointer shrink-0 transition"
+          >
+            View in Dashboard
+          </button>
+        </div>
+      )}
+
       {/* Wizard Header Bar */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -684,6 +722,15 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
               >
                 <span>Continue to Step 02</span>
                 <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            ) : alreadySubmittedApp ? (
+              <button
+                type="button"
+                onClick={() => setApplicantTab('overview')}
+                className="inline-flex items-center space-x-1.5 px-6 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-xs font-bold text-slate-700 shadow-none transition cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Already Submitted (#{alreadySubmittedApp.id})</span>
               </button>
             ) : (
               <button

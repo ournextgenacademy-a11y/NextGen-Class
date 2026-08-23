@@ -803,65 +803,33 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
                 </div>
               )}
 
-              {/* Candidate Dossier Summary & Audit Log Grid */}
-              <div className="mt-8 pt-6 border-t border-zinc-100 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div className="text-xs font-bold text-zinc-900 uppercase tracking-wider flex items-center justify-between">
-                    <span>Candidate Profile Snapshot</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowViewDossierModal(true)}
-                      className="text-[11px] text-orange-600 hover:underline font-semibold"
-                    >
-                      View Full Dossier
-                    </button>
-                  </div>
-                  <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 text-xs space-y-2.5 text-zinc-700">
-                    <div>
-                      <span className="text-zinc-600">Applicant:</span>{' '}
-                      <strong className="text-zinc-900">{activeApp.fullName}</strong> ({activeApp.email})
-                    </div>
-                    <div>
-                      <span className="text-zinc-600">Education:</span>{' '}
-                      <strong className="text-zinc-900">{activeApp.educationLevel} in {activeApp.fieldOfStudy}</strong>
-                    </div>
-                    <div>
-                      <span className="text-zinc-600">Experience:</span>{' '}
-                      <strong className="text-zinc-900">{activeApp.yearsExperience} ({activeApp.programmingBackground})</strong>
-                    </div>
-                    <div>
-                      <span className="text-zinc-600">Employment:</span>{' '}
-                      <strong className="text-zinc-900">{activeApp.employmentStatus}</strong>
-                    </div>
-                    {activeApp.assessmentScore !== undefined && (
-                      <div className="text-orange-700 font-bold flex items-center space-x-1">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Technical Screening Score: {activeApp.assessmentScore}%</span>
-                      </div>
-                    )}
-                  </div>
+              {/* Timeline & Admissions Audit Log */}
+              <div className="mt-8 pt-6 border-t border-zinc-100 space-y-3">
+                <div className="text-xs font-bold text-zinc-900 uppercase tracking-wider flex items-center justify-between">
+                  <span>Timeline & Admissions Audit Log</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowViewDossierModal(true)}
+                    className="text-[11px] text-orange-600 hover:underline font-semibold cursor-pointer"
+                  >
+                    View Submitted Dossier
+                  </button>
                 </div>
-
-                <div className="space-y-3">
-                  <div className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
-                    Timeline & Admissions Audit Log
-                  </div>
-                  <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3 max-h-48 overflow-y-auto text-xs">
-                    {activeApp.timeline && activeApp.timeline.length > 0 ? (
-                      activeApp.timeline.map((ev, idx) => (
-                        <div key={ev.id || idx} className="flex items-start space-x-2.5">
-                          <span className="w-2 h-2 rounded-full bg-orange-600 mt-1.5 shrink-0" />
-                          <div className="flex-1">
-                            <div className="font-bold text-zinc-800">{ev.title}</div>
-                            <div className="text-[11px] text-zinc-500">{ev.description}</div>
-                            <div className="text-[10px] text-zinc-400 mt-0.5">{ev.timestamp} • {ev.actor}</div>
-                          </div>
+                <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3 max-h-56 overflow-y-auto text-xs">
+                  {activeApp.timeline && activeApp.timeline.length > 0 ? (
+                    activeApp.timeline.map((ev, idx) => (
+                      <div key={ev.id || idx} className="flex items-start space-x-2.5">
+                        <span className="w-2 h-2 rounded-full bg-orange-600 mt-1.5 shrink-0" />
+                        <div className="flex-1">
+                          <div className="font-bold text-zinc-800">{ev.title}</div>
+                          <div className="text-[11px] text-zinc-500">{ev.description}</div>
+                          <div className="text-[10px] text-zinc-400 mt-0.5">{ev.timestamp} • {ev.actor}</div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-zinc-400 text-xs italic">No timeline events recorded yet.</div>
-                    )}
-                  </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-zinc-400 text-xs italic">No timeline events recorded yet.</div>
+                  )}
                 </div>
               </div>
             </div>

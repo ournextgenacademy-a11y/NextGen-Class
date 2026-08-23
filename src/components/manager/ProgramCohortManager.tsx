@@ -30,13 +30,15 @@ import {
   ArrowUpRight,
   BookOpen,
   CalendarCheck,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from 'lucide-react';
 
 export const ProgramCohortManager: React.FC = () => {
   const { 
     programs, 
     cohorts, 
+    forms,
     addProgram, 
     updateProgram, 
     archiveProgram,
@@ -100,6 +102,7 @@ export const ProgramCohortManager: React.FC = () => {
     scholarshipAvailable: true,
     assessmentId: assessments[0]?.id || '',
     assessmentDeadline: '2026-10-05',
+    formId: '',
     schedule: 'Tuesdays & Thursdays, 18:00 - 20:30 GMT + Saturday Labs',
     customFields: [] as CustomFormField[],
   });
@@ -220,6 +223,7 @@ export const ProgramCohortManager: React.FC = () => {
       scholarshipAvailable: true,
       assessmentId: assessments[0]?.id || '',
       assessmentDeadline: '2026-10-05',
+      formId: forms.find(f => (f.programId === targetProgram?.id || (f as any).programmeId === targetProgram?.id) && f.status === 'published')?.id || '',
       schedule: 'Tuesdays & Thursdays, 18:00 - 20:30 GMT + Saturday Labs',
       customFields: [],
     });
@@ -243,6 +247,7 @@ export const ProgramCohortManager: React.FC = () => {
       scholarshipAvailable: cohort.scholarshipAvailable,
       assessmentId: cohort.assessmentId || '',
       assessmentDeadline: cohort.assessmentDeadline || '',
+      formId: cohort.formId || cohort.applicationFormId || '',
       schedule: cohort.schedule,
       customFields: cohort.customFields || [],
     });
@@ -300,6 +305,8 @@ export const ProgramCohortManager: React.FC = () => {
         scholarshipAvailable: cohortForm.scholarshipAvailable,
         assessmentId: cohortForm.assessmentId,
         assessmentDeadline: cohortForm.assessmentDeadline,
+        formId: cohortForm.formId || undefined,
+        applicationFormId: cohortForm.formId || undefined,
         schedule: cohortForm.schedule,
         customFields: cohortForm.customFields,
       });
@@ -319,6 +326,8 @@ export const ProgramCohortManager: React.FC = () => {
         scholarshipAvailable: cohortForm.scholarshipAvailable,
         assessmentId: cohortForm.assessmentId,
         assessmentDeadline: cohortForm.assessmentDeadline,
+        formId: cohortForm.formId || undefined,
+        applicationFormId: cohortForm.formId || undefined,
         schedule: cohortForm.schedule,
         customFields: cohortForm.customFields,
       });
@@ -1231,6 +1240,30 @@ export const ProgramCohortManager: React.FC = () => {
                     <option value="active">ACTIVE</option>
                     <option value="completed">COMPLETED</option>
                     <option value="archived">ARCHIVED</option>
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span className="flex items-center space-x-1.5">
+                      <FileText className="w-3.5 h-3.5 text-orange-500" />
+                      <span>Attached Application Form</span>
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-normal">Candidate questionnaire for this cohort</span>
+                  </label>
+                  <select
+                    value={cohortForm.formId}
+                    onChange={e => setCohortForm({ ...cohortForm, formId: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 focus:border-indigo-500 outline-none bg-white font-medium"
+                  >
+                    <option value="">Auto-Detect Programme Application Form (Default)</option>
+                    {forms
+                      .filter(f => !cohortForm.programId || f.programId === cohortForm.programId || (f as any).programmeId === cohortForm.programId)
+                      .map(f => (
+                        <option key={f.id} value={f.id}>
+                          {f.title} (v{f.version} - {f.status.toUpperCase()})
+                        </option>
+                      ))}
                   </select>
                 </div>
 

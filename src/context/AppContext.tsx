@@ -1532,14 +1532,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  const getPublishedFormForProgramme = (programmeId: string, cohortId?: string): ApplicationForm | undefined => {
-    // Look first for cohort-specific published form, then fall back to programme published form
-    const publishedForms = forms.filter(f => f.status === 'published' && (f.programmeId === programmeId || f.programId === programmeId));
+  const getPublishedFormForProgramme = (programmeId?: string, cohortId?: string): ApplicationForm | undefined => {
+    // 1. If cohortId provided, find the cohort to resolve attached form or programId
+    let targetProgId = programmeId;
+    let cohortLinkedFormId: string | undefined;
     if (cohortId) {
-      const cohortForm = publishedForms.find(f => f.cohortId === cohortId);
+      const coh = cohorts.find(c => c.id === cohortId);
+      if (coh) {
+        targetProgId = targetProgId || coh.programId || (coh as any).programmeId;
+        cohortLinkedFormId = coh.formId || coh.applicationFormId;
+      }
+    }
+
+    // 2. Direct cohort linked form (e.g. configured in Cohort Settings)
+    if (cohortLinkedFormId) {
+      const directForm = forms.find(f => f.id === cohortLinkedFormId && f.status === 'published');
+      if (directForm) return directForm;
+    }
+
+    // 3. Cohort specific published form (form explicitly tagged with cohortId)
+    if (cohortId) {
+      const cohortForm = forms.find(f => f.status === 'published' && f.cohortId === cohortId);
       if (cohortForm) return cohortForm;
     }
-    return publishedForms.find(f => !f.cohortId) || publishedForms[0];
+
+    // 4. Programme specific published form
+    if (targetProgId) {
+      const progGenericForm = forms.find(f => 
+        f.status === 'published' && 
+        (f.programmeId === targetProgId || f.programId === targetProgId) && 
+        (!f.cohortId || (cohortId && f.cohortId === cohortId))
+      );
+      if (progGenericForm) return progGenericForm;
+
+      const anyProgPublishedForm = forms.find(f => 
+        f.status === 'published' && 
+        (f.programmeId === targetProgId || f.programId === targetProgId)
+      );
+      if (anyProgPublishedForm) return anyProgPublishedForm;
+    }
+
+    // 5. Fallback: Return any available published form
+    return forms.find(f => f.status === 'published');
   };
 
   // Application operations
@@ -1577,13 +1611,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: appData.phone || currentUser.phone || '',
       country: appData.country || 'Nigeria',
       city: appData.city || 'Lagos',
-      gender: appData.gender || 'Female',
-      ageRange: appData.ageRange || '25-34',
-      educationLevel: appData.educationLevel || 'Bachelor Degree',
+      gender: appData.gender || 'Not Specified',
+      ageRange: appData.ageRange || '18-24',
+      educationLevel: appData.educationLevel || '',
       fieldOfStudy: appData.fieldOfStudy || '',
-      employmentStatus: appData.employmentStatus || 'Employed full-time',
-      yearsExperience: appData.yearsExperience || '1-2 years',
-      programmingBackground: appData.programmingBackground || 'Familiar (Basic scripts)',
+      employmentStatus: appData.employmentStatus || '',
+      yearsExperience: appData.yearsExperience || '',
+      programmingBackground: appData.programmingBackground || '',
       linkedinUrl: appData.linkedinUrl,
       githubUrl: appData.githubUrl,
       portfolioUrl: appData.portfolioUrl,
@@ -1658,10 +1692,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const submitApplication = (appData: Partial<Application>): Application => {
+    const targetCohortId = appData.cohortId || (appData as any).selectedCohId || 'cohort-genai-2';
+    const targetProgramId = appData.programId || (appData as any).selectedProgId || 'prog-genai';
+
+    // Duplicate Check: Enforce strictly ONE submitted application per cohort per applicant
+    const existingSubmitted = applications.find(
+      a => (a.applicantId === currentUser.id || (a.email && currentUser.email && a.email.toLowerCase() === currentUser.email.toLowerCase())) &&
+           a.cohortId === targetCohortId &&
+           a.status !== 'draft' &&
+           a.id !== appData.id
+    );
+
+    if (existingSubmitted) {
+      addToast({
+        title: 'Application Already Submitted',
+        message: `You have already submitted an application for this cohort (${existingSubmitted.id}). Only one application is permitted per cohort.`,
+        type: 'error',
+      });
+      return existingSubmitted;
+    }
+
     const existingDraftIndex = applications.findIndex(
       a => (appData.id && a.id === appData.id) ||
-           (a.applicantId === currentUser.id && a.status === 'draft' && a.programId === appData.programId && a.cohortId === appData.cohortId)
+           ((a.applicantId === currentUser.id || (a.email && currentUser.email && a.email.toLowerCase() === currentUser.email.toLowerCase())) && 
+            a.status === 'draft' && 
+            a.cohortId === targetCohortId)
     );
+
+    const oldDraftDocId = existingDraftIndex >= 0 
+      ? applications[existingDraftIndex].id 
+      : (appData.id && appData.id.startsWith('draft-') ? appData.id : null);
 
     const submissionId = existingDraftIndex >= 0 && !applications[existingDraftIndex].id.startsWith('draft-')
       ? applications[existingDraftIndex].id 
@@ -1674,27 +1734,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...(existingDraftIndex >= 0 ? applications[existingDraftIndex] : {}),
       ...appData,
       id: submissionId,
-      programId: appData.programId || 'prog-genai',
-      cohortId: appData.cohortId || 'cohort-genai-2',
+      programId: targetProgramId,
+      cohortId: targetCohortId,
       applicantId: currentUser.id,
       fullName: appData.fullName || currentUser.name,
       email: appData.email || currentUser.email,
-      phone: appData.phone || '+234 800 000 0000',
+      phone: appData.phone || currentUser.phone || '',
       country: appData.country || 'Nigeria',
-      city: appData.city || 'Lagos',
-      gender: appData.gender || 'Female',
-      ageRange: appData.ageRange || '25-34',
-      educationLevel: appData.educationLevel || 'Bachelor Degree',
-      fieldOfStudy: appData.fieldOfStudy || 'Computer Science',
-      employmentStatus: appData.employmentStatus || 'Employed full-time',
-      yearsExperience: appData.yearsExperience || '2 years',
-      programmingBackground: appData.programmingBackground || 'Intermediate (1-2 years)',
+      city: appData.city || '',
+      gender: appData.gender || 'Not Specified',
+      ageRange: appData.ageRange || '18-24',
+      educationLevel: appData.educationLevel || '',
+      fieldOfStudy: appData.fieldOfStudy || '',
+      employmentStatus: appData.employmentStatus || '',
+      yearsExperience: appData.yearsExperience || '',
+      programmingBackground: appData.programmingBackground || '',
       linkedinUrl: appData.linkedinUrl,
       githubUrl: appData.githubUrl,
       portfolioUrl: appData.portfolioUrl,
       cvUrl: appData.cvUrl,
-      motivationStatement: appData.motivationStatement || 'Excited to level up skills at NextGen Academy.',
-      goalsStatement: appData.goalsStatement || 'Build impactful software solutions.',
+      motivationStatement: appData.motivationStatement || '',
+      goalsStatement: appData.goalsStatement || '',
       customAnswers: appData.customAnswers || {},
       uploadedFiles: appData.uploadedFiles || {},
       status: 'submitted',
@@ -1717,15 +1777,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       internalTags: ['New Submission'],
     };
 
-    if (existingDraftIndex >= 0) {
-      setApplications(prev => {
-        const next = [...prev];
-        next[existingDraftIndex] = newApp;
-        return next;
-      });
-    } else {
-      setApplications(prev => [newApp, ...prev.filter(a => a.id !== newApp.id)]);
+    // Clean up previous draft document if ID changed
+    if (oldDraftDocId && oldDraftDocId !== submissionId) {
+      deleteDocFromFirestore('applications', oldDraftDocId);
     }
+
+    setApplications(prev => [newApp, ...prev.filter(a => a.id !== newApp.id && a.id !== oldDraftDocId)]);
 
     syncDocToFirestore('applications', newApp.id, newApp);
 

@@ -25,7 +25,7 @@ interface ProgramDirectoryProps {
 export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
   onSelectProgramForApply,
 }) => {
-  const { programs, cohorts } = useApp();
+  const { programs, cohorts, applications, currentUser, setApplicantTab } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedProgramModal, setSelectedProgramModal] = useState<Program | null>(null);
@@ -196,15 +196,46 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
                       Curriculum Details
                     </button>
 
-                    {activeOpenCohort && (
-                      <button
-                        onClick={() => onSelectProgramForApply(program.id, activeOpenCohort.id)}
-                        className="flex items-center space-x-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl shadow-sm transition cursor-pointer"
-                      >
-                        <span>Apply Now</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    {activeOpenCohort && (() => {
+                      const userApp = applications.find(
+                        a => (a.applicantId === currentUser.id || (a.email && currentUser.email && a.email.toLowerCase() === currentUser.email.toLowerCase())) &&
+                             a.cohortId === activeOpenCohort.id
+                      );
+
+                      if (userApp && userApp.status !== 'draft') {
+                        return (
+                          <button
+                            onClick={() => setApplicantTab('overview')}
+                            className="flex items-center space-x-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-1.5 rounded-xl shadow-sm transition cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Applied (View Status)</span>
+                          </button>
+                        );
+                      }
+
+                      if (userApp && userApp.status === 'draft') {
+                        return (
+                          <button
+                            onClick={() => onSelectProgramForApply(program.id, activeOpenCohort.id)}
+                            className="flex items-center space-x-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl shadow-sm transition cursor-pointer"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Resume Draft</span>
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <button
+                          onClick={() => onSelectProgramForApply(program.id, activeOpenCohort.id)}
+                          className="flex items-center space-x-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl shadow-sm transition cursor-pointer"
+                        >
+                          <span>Apply Now</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
