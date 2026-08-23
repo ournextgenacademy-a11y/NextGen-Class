@@ -458,7 +458,7 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {programs.map((prog) => {
                 const isSelected = selectedProgId === prog.id;
-                const cohCount = cohorts.filter(c => c.programId === prog.id && (c.status === 'applications_open' || c.status === 'admissions_open')).length;
+                const cohCount = cohorts.filter(c => c.programId === prog.id && c.status !== 'archived').length;
 
                 return (
                   <div

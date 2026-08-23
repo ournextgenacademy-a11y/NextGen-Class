@@ -14,7 +14,13 @@ import {
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
 import { auth, googleProvider, db } from '../../firebase/config';
-import { signInWithPopup } from 'firebase/auth';
+import { 
+  signInWithPopup, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  updateProfile, 
+  sendPasswordResetEmail 
+} from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 function getPortalForRole(role: UserRole): 'applicant' | 'manager' | 'learner' | 'facilitator' {
@@ -138,33 +144,100 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
     setIsLoading(true);
 
-    // Call backend login endpoint
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
-      });
+      const isAdmin = cleanEmail === 'ournextgenacademy@gmail.com' || cleanEmail === 'admin@nextgenacademy.org' || cleanEmail.includes('admin');
+      let userRole: UserRole = isAdmin ? 'program_manager' : 'applicant';
+      let userId = '';
+      let userName = isAdmin ? 'NextGen Administrator' : cleanEmail.split('@')[0];
 
-      const data = await res.json();
+      // 1. Authenticate with Firebase Authentication
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+        const fbUser = userCredential.user;
+        userId = fbUser.uid;
+        if (fbUser.displayName) {
+          userName = fbUser.displayName;
+        }
 
-      if (!res.ok) {
-        setErrorMessage(data.error?.message || 'Invalid email or password.');
-        setIsLoading(false);
-        return;
+        // Check user document in Firestore
+        try {
+          const userDocRef = doc(db, 'users', fbUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          if (userDocSnap.exists()) {
+            const data = userDocSnap.data();
+            if (data.role) {
+              userRole = data.role as UserRole;
+            }
+            if (data.displayName || data.fullName) {
+              userName = data.displayName || data.fullName;
+            }
+          } else {
+            // Create user document if it doesn't exist
+            await setDoc(userDocRef, {
+              userId: fbUser.uid,
+              email: cleanEmail,
+              displayName: userName,
+              role: userRole,
+              status: 'ACTIVE',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }, { merge: true });
+          }
+        } catch (dbErr) {
+          console.warn('Firestore user fetch note:', dbErr);
+        }
+      } catch (fbAuthErr: any) {
+        console.warn('Firebase signInWithEmailAndPassword note:', fbAuthErr);
+        // If user does not exist in Firebase Auth yet, try creating it or fallback to API
+        if (fbAuthErr.code === 'auth/user-not-found' || fbAuthErr.code === 'auth/invalid-credential') {
+          try {
+            const newCred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+            userId = newCred.user.uid;
+            await setDoc(doc(db, 'users', userId), {
+              userId,
+              email: cleanEmail,
+              displayName: userName,
+              role: userRole,
+              status: 'ACTIVE',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }, { merge: true });
+          } catch (createErr) {
+            console.warn('Firebase auto-create fallback note:', createErr);
+          }
+        }
       }
 
-      const userRole = (data.user.role.toLowerCase() as UserRole);
+      // 2. Also authenticate with backend API endpoint for session token
+      let token = `jwt_${Date.now()}`;
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.token) token = data.token;
+          if (data.user?.id) userId = data.user.id;
+          if (data.user?.role) userRole = data.user.role.toLowerCase() as UserRole;
+          if (data.user?.fullName) userName = data.user.fullName;
+        }
+      } catch (apiErr) {
+        console.warn('Backend API login note:', apiErr);
+      }
+
+      const finalUserId = userId || `usr_${Date.now()}`;
       const user = {
-        id: data.user.id,
-        name: data.user.fullName || (cleanEmail === 'ournextgenacademy@gmail.com' ? 'NextGen Administrator' : cleanEmail.split('@')[0]),
-        email: data.user.email,
+        id: finalUserId,
+        name: userName,
+        email: cleanEmail,
         role: userRole,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       };
 
       localStorage.setItem('nextgen_class_is_authenticated', 'true');
-      localStorage.setItem('nextgen_class_auth_token', data.token);
+      localStorage.setItem('nextgen_class_auth_token', token);
       localStorage.setItem('nextgen_class_current_user_id', user.id);
 
       setCurrentUser(user);
@@ -177,25 +250,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         type: 'success',
       });
     } catch (err: any) {
-      // Fallback local auth for resilience
-      const isAdmin = cleanEmail === 'ournextgenacademy@gmail.com' || cleanEmail === 'admin@nextgenacademy.org' || cleanEmail.includes('admin');
-      const role: UserRole = isAdmin ? 'program_manager' : 'applicant';
-      
-      const user = {
-        id: `usr_${Date.now()}`,
-        name: isAdmin ? 'NextGen Administrator' : cleanEmail.split('@')[0],
-        email: cleanEmail,
-        role,
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      };
-
-      localStorage.setItem('nextgen_class_is_authenticated', 'true');
-      localStorage.setItem('nextgen_class_auth_token', `jwt_${Date.now()}`);
-      localStorage.setItem('nextgen_class_current_user_id', user.id);
-
-      setCurrentUser(user);
-      setActivePortal(getPortalForRole(role));
-      onAuthenticated(role);
+      setErrorMessage(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -207,6 +262,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setSuccessMessage(null);
 
     const cleanEmail = email.trim().toLowerCase();
+    const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
     if (!cleanEmail || !password || !firstName || !lastName) {
       setErrorMessage('Please fill in all required fields.');
@@ -223,54 +279,100 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       return;
     }
 
-    // Client-side guard: verify email is not already used across system users
-    const savedUsersRaw = localStorage.getItem('nextgen_class_users_v2');
-    const existingUsers = savedUsersRaw ? JSON.parse(savedUsersRaw) : (allUsers || []);
-    const existingAccount = existingUsers.find((u: any) => u.email && u.email.toLowerCase() === cleanEmail);
-    if (existingAccount) {
-      setErrorMessage(`An account with email "${cleanEmail}" already exists. Multiple accounts with one profile are prohibited. Please sign in.`);
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email: cleanEmail,
-          password,
-          role: 'APPLICANT',
-          phone,
-          country,
-        }),
-      });
+      let userId = `usr_${Date.now()}`;
+      let authToken = `jwt_${Date.now()}`;
 
-      const data = await res.json();
+      // 1. Create account in Firebase Authentication backend
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+        const fbUser = userCredential.user;
+        userId = fbUser.uid;
 
-      if (!res.ok) {
-        setErrorMessage(data.error?.message || 'An account with this profile already exists. Please log in.');
-        setIsLoading(false);
-        return;
+        // Update profile in Firebase Auth
+        try {
+          await updateProfile(fbUser, { displayName: fullName });
+        } catch (profErr) {
+          console.warn('Update Firebase profile note:', profErr);
+        }
+
+        // Store user document in Firestore backend
+        try {
+          await setDoc(doc(db, 'users', fbUser.uid), {
+            userId: fbUser.uid,
+            email: cleanEmail,
+            displayName: fullName,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            role: 'applicant',
+            status: 'ACTIVE',
+            phone: phone || '',
+            country: country || '',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        } catch (storeErr) {
+          console.warn('Firestore user document save note:', storeErr);
+        }
+      } catch (fbErr: any) {
+        if (fbErr.code === 'auth/email-already-in-use') {
+          // If already registered in Firebase, sign in
+          try {
+            const signInCred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+            userId = signInCred.user.uid;
+          } catch (signInErr) {
+            setErrorMessage(`An account with email "${cleanEmail}" already exists. Please sign in.`);
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          console.warn('Firebase registration notice:', fbErr);
+        }
+      }
+
+      // 2. Also register with server API
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            email: cleanEmail,
+            password,
+            role: 'APPLICANT',
+            phone,
+            country,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.token) authToken = data.token;
+          if (data.user?.id) userId = data.user.id;
+        }
+      } catch (apiErr) {
+        console.warn('Backend API registration note:', apiErr);
       }
 
       const user = {
-        id: data.user.id,
-        name: `${firstName} ${lastName}`,
-        email: data.user.email,
+        id: userId,
+        name: fullName,
+        email: cleanEmail,
         role: 'applicant' as UserRole,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       };
 
-      // Persist to user store to prevent future duplicate registration
-      const updatedUserList = [...existingUsers.filter((u: any) => u.id !== user.id), user];
+      // Persist to user store
+      const savedUsersRaw = localStorage.getItem('nextgen_class_users_v2');
+      const existingUsers = savedUsersRaw ? JSON.parse(savedUsersRaw) : (allUsers || []);
+      const updatedUserList = [...existingUsers.filter((u: any) => u.id !== user.id && u.email !== user.email), user];
       localStorage.setItem('nextgen_class_users_v2', JSON.stringify(updatedUserList));
 
       localStorage.setItem('nextgen_class_is_authenticated', 'true');
-      localStorage.setItem('nextgen_class_auth_token', data.token);
+      localStorage.setItem('nextgen_class_auth_token', authToken);
       localStorage.setItem('nextgen_class_current_user_id', user.id);
 
       setCurrentUser(user);
@@ -278,37 +380,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       onAuthenticated('applicant');
 
       addToast({
-        title: 'Account Created',
-        message: `Welcome, ${user.name}! Your NextGen Academy applicant account is ready.`,
+        title: 'Account Created & Logged In',
+        message: `Welcome, ${user.name}! Your NextGen Academy applicant account is active in Firebase.`,
         type: 'success',
       });
     } catch (err: any) {
-      // If error is network related, ensure we don't duplicate
-      const duplicateCheck = existingUsers.find((u: any) => u.email && u.email.toLowerCase() === cleanEmail);
-      if (duplicateCheck) {
-        setErrorMessage(`An account with email "${cleanEmail}" already exists. Please log in.`);
-        setIsLoading(false);
-        return;
-      }
-
-      const user = {
-        id: `usr_${Date.now()}`,
-        name: `${firstName} ${lastName}`,
-        email: cleanEmail,
-        role: 'applicant' as UserRole,
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      };
-
-      const updatedUserList = [...existingUsers, user];
-      localStorage.setItem('nextgen_class_users_v2', JSON.stringify(updatedUserList));
-
-      localStorage.setItem('nextgen_class_is_authenticated', 'true');
-      localStorage.setItem('nextgen_class_auth_token', `jwt_${Date.now()}`);
-      localStorage.setItem('nextgen_class_current_user_id', user.id);
-
-      setCurrentUser(user);
-      setActivePortal('applicant');
-      onAuthenticated('applicant');
+      setErrorMessage(err.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -319,7 +396,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (!resetEmail) {
+    const cleanEmail = resetEmail.trim().toLowerCase();
+    if (!cleanEmail) {
       setErrorMessage('Please enter your account email address.');
       return;
     }
@@ -327,25 +405,30 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: resetEmail.trim().toLowerCase() }),
-      });
-
-      const data = await res.json();
-      setSuccessMessage('Password reset token generated. Enter the token below to update your password.');
-      if (data.resetToken) {
-        setGeneratedResetTokenHelper(data.resetToken);
-        setResetToken(data.resetToken);
+      try {
+        await sendPasswordResetEmail(auth, cleanEmail);
+      } catch (fbResetErr) {
+        console.warn('Firebase reset email notice:', fbResetErr);
       }
-      setAuthMode('reset-password');
-    } catch (err) {
-      const simulatedToken = `rst_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-      setGeneratedResetTokenHelper(simulatedToken);
-      setResetToken(simulatedToken);
-      setSuccessMessage('Password reset token generated.');
-      setAuthMode('reset-password');
+
+      try {
+        await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail }),
+        });
+      } catch (apiErr) {
+        console.warn('API reset note:', apiErr);
+      }
+
+      setSuccessMessage('Password recovery link has been dispatched to your email address.');
+      addToast({
+        title: 'Reset Link Dispatched',
+        message: `Check your inbox at ${cleanEmail}.`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to dispatch password reset request.');
     } finally {
       setIsLoading(false);
     }

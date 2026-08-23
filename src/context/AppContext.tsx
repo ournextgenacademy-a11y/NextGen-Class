@@ -47,6 +47,32 @@ import {
 } from '../notifications/notificationService';
 import { validateAndParseFormCsv } from '../utils/formCsvParser';
 import confetti from 'canvas-confetti';
+import { db, auth } from '../firebase/config';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  onSnapshot, 
+  writeBatch 
+} from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+
+const syncDocToFirestore = async (col: string, id: string, data: any) => {
+  try {
+    await setDoc(doc(db, col, id), data, { merge: true });
+  } catch (err) {
+    console.warn(`Firestore sync error on ${col}/${id}:`, err);
+  }
+};
+
+const deleteDocFromFirestore = async (col: string, id: string) => {
+  try {
+    await deleteDoc(doc(db, col, id));
+  } catch (err) {
+    console.warn(`Firestore delete error on ${col}/${id}:`, err);
+  }
+};
 
 interface Toast {
   id: string;
@@ -410,6 +436,107 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.FORMS, JSON.stringify(forms));
   }, [forms]);
 
+  // Real-time Firestore synchronization & initial seeding
+  useEffect(() => {
+    // 1. Synchronize Programmes from Firestore
+    const unsubProgrammes = onSnapshot(collection(db, 'programmes'), (snapshot) => {
+      if (snapshot.empty) {
+        try {
+          const batch = writeBatch(db);
+          SEED_PROGRAMS.forEach(p => {
+            batch.set(doc(db, 'programmes', p.id), p);
+          });
+          batch.commit().catch(() => {});
+        } catch (_) {}
+      } else {
+        const liveProgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Program));
+        setPrograms(liveProgs);
+      }
+    }, (err) => console.warn('Firestore programmes listener note:', err));
+
+    // 2. Synchronize Cohorts from Firestore
+    const unsubCohorts = onSnapshot(collection(db, 'cohorts'), (snapshot) => {
+      if (snapshot.empty) {
+        try {
+          const batch = writeBatch(db);
+          SEED_COHORTS.forEach(c => {
+            batch.set(doc(db, 'cohorts', c.id), c);
+          });
+          batch.commit().catch(() => {});
+        } catch (_) {}
+      } else {
+        const liveCohorts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Cohort));
+        setCohorts(liveCohorts);
+      }
+    }, (err) => console.warn('Firestore cohorts listener note:', err));
+
+    // 3. Synchronize Application Forms from Firestore
+    const unsubForms = onSnapshot(collection(db, 'forms'), (snapshot) => {
+      if (snapshot.empty) {
+        try {
+          const batch = writeBatch(db);
+          SEED_APPLICATION_FORMS.forEach(f => {
+            batch.set(doc(db, 'forms', f.id), f);
+          });
+          batch.commit().catch(() => {});
+        } catch (_) {}
+      } else {
+        const liveForms = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ApplicationForm));
+        setForms(liveForms);
+      }
+    }, (err) => console.warn('Firestore forms listener note:', err));
+
+    // 4. Synchronize Applications from Firestore
+    const unsubApplications = onSnapshot(collection(db, 'applications'), (snapshot) => {
+      if (!snapshot.empty) {
+        const liveApps = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Application));
+        setApplications(liveApps);
+      }
+    }, (err) => console.warn('Firestore applications listener note:', err));
+
+    // 5. Synchronize Assessments from Firestore
+    const unsubAssessments = onSnapshot(collection(db, 'assessments'), (snapshot) => {
+      if (snapshot.empty) {
+        try {
+          const batch = writeBatch(db);
+          SEED_ASSESSMENTS.forEach(a => {
+            batch.set(doc(db, 'assessments', a.id), a);
+          });
+          batch.commit().catch(() => {});
+        } catch (_) {}
+      } else {
+        const liveAsms = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Assessment));
+        setAssessments(liveAsms);
+      }
+    }, (err) => console.warn('Firestore assessments listener note:', err));
+
+    // 6. Synchronize Assessment Submissions from Firestore
+    const unsubSubmissions = onSnapshot(collection(db, 'submissions'), (snapshot) => {
+      if (!snapshot.empty) {
+        const liveSubs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssessmentSubmission));
+        setAssessmentSubmissions(liveSubs);
+      }
+    }, (err) => console.warn('Firestore submissions listener note:', err));
+
+    // 7. Synchronize Messages from Firestore
+    const unsubMessages = onSnapshot(collection(db, 'messages'), (snapshot) => {
+      if (!snapshot.empty) {
+        const liveMsgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as CommunicationMessage));
+        setMessages(liveMsgs);
+      }
+    }, (err) => console.warn('Firestore messages listener note:', err));
+
+    return () => {
+      unsubProgrammes();
+      unsubCohorts();
+      unsubForms();
+      unsubApplications();
+      unsubAssessments();
+      unsubSubmissions();
+      unsubMessages();
+    };
+  }, []);
+
   const addToast = (toast: Omit<Toast, 'id'>) => {
     const id = 'toast-' + Date.now() + Math.random().toString(36).substr(2, 4);
     setToasts(prev => [...prev, { ...toast, id }]);
@@ -443,13 +570,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // MODULE 10: COMMUNICATIONS & NOTIFICATIONS
   // ==========================================
   const sendMessage = (msgData: Omit<CommunicationMessage, 'id' | 'sentAt' | 'status'>) => {
+    const newId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
     const newMsg: CommunicationMessage = {
       ...msgData,
-      id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
+      id: newId,
       sentAt: new Date().toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
       status: 'delivered',
     };
     setMessages(prev => [newMsg, ...prev.filter(m => m.id !== newMsg.id)]);
+    syncDocToFirestore('messages', newId, newMsg);
   };
 
   const triggerNotification = async (
@@ -731,7 +860,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: now,
       updatedAt: now,
     };
-    setPrograms(prev => [newProg, ...prev]);
+    setPrograms(prev => [newProg, ...prev.filter(p => p.id !== newId)]);
+    syncDocToFirestore('programmes', newId, newProg);
+
     addToast({
       title: 'Programme Created',
       message: `"${newProg.name}" has been configured successfully.`,
@@ -742,7 +873,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateProgram = (id: string, updates: Partial<Program>) => {
     const now = new Date().toISOString();
-    setPrograms(prev => prev.map(p => p.id === id ? { ...p, ...updates, updatedAt: now } : p));
+    setPrograms(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      const updated = { ...p, ...updates, updatedAt: now };
+      syncDocToFirestore('programmes', id, updated);
+      return updated;
+    }));
     addToast({
       title: 'Programme Updated',
       message: 'Programme details have been saved.',
@@ -752,7 +888,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const archiveProgram = (id: string) => {
     const now = new Date().toISOString();
-    setPrograms(prev => prev.map(p => p.id === id ? { ...p, status: 'archived', updatedAt: now } : p));
+    setPrograms(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      const updated = { ...p, status: 'archived' as const, updatedAt: now };
+      syncDocToFirestore('programmes', id, updated);
+      return updated;
+    }));
     addToast({
       title: 'Programme Archived',
       message: 'Programme status updated to ARCHIVED.',
@@ -765,17 +906,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPrograms(prev => prev.map(p => {
       if (p.id !== id) return p;
       const nextStatus = p.status === 'active' ? 'draft' : 'active';
+      const updated = { ...p, status: nextStatus as any, updatedAt: now };
+      syncDocToFirestore('programmes', id, updated);
       addToast({
         title: nextStatus === 'active' ? 'Programme Activated' : 'Programme Deactivated',
         message: `Programme is now ${(nextStatus || '').toUpperCase()}.`,
         type: nextStatus === 'active' ? 'success' : 'warning',
       });
-      return { ...p, status: nextStatus, updatedAt: now };
+      return updated;
     }));
   };
 
   const deleteProgram = (id: string) => {
     setPrograms(prev => prev.filter(p => p.id !== id));
+    deleteDocFromFirestore('programmes', id);
     addToast({
       title: 'Programme Removed',
       message: 'Programme has been removed from catalog.',
@@ -795,7 +939,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: now,
       updatedAt: now,
     };
-    setCohorts(prev => [newCohort, ...prev]);
+    setCohorts(prev => [newCohort, ...prev.filter(c => c.id !== newId)]);
+    syncDocToFirestore('cohorts', newId, newCohort);
+
     addToast({
       title: 'Cohort Launched',
       message: `"${newCohort.name}" is now configured and ready.`,
@@ -806,7 +952,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateCohort = (id: string, updates: Partial<Cohort>) => {
     const now = new Date().toISOString();
-    setCohorts(prev => prev.map(c => c.id === id ? { ...c, ...updates, updatedAt: now } : c));
+    setCohorts(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      const updated = { ...c, ...updates, updatedAt: now };
+      syncDocToFirestore('cohorts', id, updated);
+      return updated;
+    }));
     addToast({
       title: 'Cohort Updated',
       message: 'Cohort parameters updated successfully.',
@@ -816,7 +967,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const archiveCohort = (id: string) => {
     const now = new Date().toISOString();
-    setCohorts(prev => prev.map(c => c.id === id ? { ...c, status: 'archived', updatedAt: now } : c));
+    setCohorts(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      const updated = { ...c, status: 'archived' as const, updatedAt: now };
+      syncDocToFirestore('cohorts', id, updated);
+      return updated;
+    }));
     addToast({
       title: 'Cohort Archived',
       message: 'Cohort status set to ARCHIVED.',
@@ -826,7 +982,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const openCohortApplications = (id: string) => {
     const now = new Date().toISOString();
-    setCohorts(prev => prev.map(c => c.id === id ? { ...c, status: 'applications_open', updatedAt: now } : c));
+    setCohorts(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      const updated = { ...c, status: 'applications_open' as const, updatedAt: now };
+      syncDocToFirestore('cohorts', id, updated);
+      return updated;
+    }));
     addToast({
       title: 'Applications Opened',
       message: 'Applications are now officially OPEN for candidate submissions.',
@@ -836,7 +997,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const closeCohortApplications = (id: string) => {
     const now = new Date().toISOString();
-    setCohorts(prev => prev.map(c => c.id === id ? { ...c, status: 'applications_closed', updatedAt: now } : c));
+    setCohorts(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      const updated = { ...c, status: 'applications_closed' as const, updatedAt: now };
+      syncDocToFirestore('cohorts', id, updated);
+      return updated;
+    }));
     addToast({
       title: 'Applications Closed',
       message: 'Applications are now CLOSED for this cohort.',
@@ -846,7 +1012,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateCohortStatus = (id: string, status: CohortStatus) => {
     const now = new Date().toISOString();
-    setCohorts(prev => prev.map(c => c.id === id ? { ...c, status, updatedAt: now } : c));
+    setCohorts(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      const updated = { ...c, status, updatedAt: now };
+      syncDocToFirestore('cohorts', id, updated);
+      return updated;
+    }));
     addToast({
       title: 'Cohort Status Updated',
       message: `Cohort status is now ${((status as string) || '').replace('_', ' ').toUpperCase()}.`,
@@ -856,6 +1027,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteCohort = (id: string) => {
     setCohorts(prev => prev.filter(c => c.id !== id));
+    deleteDocFromFirestore('cohorts', id);
     addToast({
       title: 'Cohort Removed',
       message: 'Cohort record has been deleted.',
@@ -899,8 +1071,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fields: s.fields.map(f => ({ ...f, formId: newForm.id, sectionId: s.id })),
     }));
 
-    setForms(prev => [newForm, ...prev]);
+    setForms(prev => [newForm, ...prev.filter(f => f.id !== newForm.id)]);
     setActiveFormId(newForm.id);
+    syncDocToFirestore('forms', newForm.id, newForm);
+
     addToast({
       title: 'Application Form Created',
       message: `Form "${newForm.title}" initialized as draft.`,
@@ -914,12 +1088,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetProgramId = (updates as any).programmeId || (updates as any).programId;
     setForms(prev => prev.map(f => {
       if (f.id !== id) return f;
-      return {
+      const updated = {
         ...f,
         ...updates,
         ...(targetProgramId !== undefined ? { programmeId: targetProgramId, programId: targetProgramId } : {}),
         updatedAt: now,
       };
+      syncDocToFirestore('forms', id, updated);
+      return updated;
     }));
   };
 
@@ -931,6 +1107,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return remaining;
     });
+    deleteDocFromFirestore('forms', id);
     addToast({
       title: 'Form Deleted',
       message: 'Application form has been removed.',
@@ -974,14 +1151,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date().toISOString();
     setForms(prev => prev.map(f => {
       if (f.id === id) {
-        return {
+        const updated = {
           ...f,
           programmeId: targetProgramId,
           programId: targetProgramId,
-          status: 'published',
+          status: 'published' as const,
           publishedAt: now,
           updatedAt: now,
         };
+        syncDocToFirestore('forms', id, updated);
+        return updated;
       }
       return f;
     }));
@@ -999,11 +1178,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date().toISOString();
     setForms(prev => prev.map(f => {
       if (f.id !== id) return f;
-      return {
+      const updated = {
         ...f,
-        status: 'draft',
+        status: 'draft' as const,
         updatedAt: now,
       };
+      syncDocToFirestore('forms', id, updated);
+      return updated;
     }));
     addToast({
       title: 'Form Unpublished',
@@ -1437,8 +1618,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         programme: prog,
       });
     } else {
-      setApplications(prev => [draftApp, ...prev]);
+      setApplications(prev => [draftApp, ...prev.filter(a => a.id !== draftApp.id)]);
     }
+
+    syncDocToFirestore('applications', draftApp.id, draftApp);
 
     addToast({
       title: 'Draft Saved Successfully 💾',
@@ -1451,6 +1634,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteDraftApplication = (appId: string) => {
     setApplications(prev => prev.filter(a => a.id !== appId));
+    deleteDocFromFirestore('applications', appId);
     addToast({
       title: 'Draft Discarded',
       message: 'Application draft has been removed.',
@@ -1525,8 +1709,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return next;
       });
     } else {
-      setApplications(prev => [newApp, ...prev]);
+      setApplications(prev => [newApp, ...prev.filter(a => a.id !== newApp.id)]);
     }
+
+    syncDocToFirestore('applications', newApp.id, newApp);
 
     const prog = programs.find(p => p.id === newApp.programId);
     const coh = cohorts.find(c => c.id === newApp.cohortId);
@@ -1615,13 +1801,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         scholarshipPercentage: app.scholarshipPercentage ?? 100,
       } : {};
 
-      return {
+      const updatedApp = {
         ...app,
         status,
         updatedDate: new Date().toISOString().split('T')[0],
         timeline: newTimeline,
         ...offerUpdates,
       };
+      syncDocToFirestore('applications', appId, updatedApp);
+      return updatedApp;
     }));
 
     // Update cohort counts if admitted or enrolled
@@ -1920,7 +2108,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString(),
     };
 
-    setAssessments(prev => [newAssessment, ...prev]);
+    setAssessments(prev => [newAssessment, ...prev.filter(a => a.id !== newId)]);
+    syncDocToFirestore('assessments', newId, newAssessment);
     addToast({
       title: 'Assessment Created ✨',
       message: `Created "${newAssessment.title}" in draft status.`,
@@ -1944,6 +2133,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [updatedWithTime, ...prev];
     });
+    syncDocToFirestore('assessments', updatedWithTime.id, updatedWithTime);
 
     addToast({
       title: 'Assessment Saved',
@@ -1955,6 +2145,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteAssessment = (assessmentId: string) => {
     const target = assessments.find(a => a.id === assessmentId);
     setAssessments(prev => prev.filter(a => a.id !== assessmentId));
+    deleteDocFromFirestore('assessments', assessmentId);
     addToast({
       title: 'Assessment Deleted',
       message: target ? `"${target.title}" was removed.` : 'Assessment removed.',
@@ -2096,17 +2287,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       submittedAt: new Date().toISOString(),
     };
 
-    setAssessmentSubmissions(prev => [submission, ...prev]);
+    setAssessmentSubmissions(prev => [submission, ...prev.filter(s => s.id !== newId)]);
+    syncDocToFirestore('submissions', newId, submission);
 
     // Update target application score & status
     setApplications(prev => prev.map(app => {
       if (app.id !== submission.applicationId) return app;
       const newStatus = submission.passed ? 'assessment_completed' : 'under_review';
-      return {
+      const updatedApp = {
         ...app,
         assessmentScore: Math.round(submission.percentageScore),
         assessmentSubmissionId: newId,
-        status: newStatus,
+        status: newStatus as any,
         timeline: [
           ...app.timeline,
           {
@@ -2115,10 +2307,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             description: `Score: ${Math.round(submission.percentageScore)}% (${submission.score}/${submission.maxScore} pts). Outcome: ${submission.passed ? 'PASSED' : 'NEEDS REVIEW'}.`,
             timestamp: new Date().toLocaleString(),
             actor: 'Assessment System',
-            type: 'assessment',
+            type: 'assessment' as const,
           },
         ],
       };
+      syncDocToFirestore('applications', app.id, updatedApp);
+      return updatedApp;
     }));
 
     // Trigger automated ASSESSMENT_SUBMITTED notification event

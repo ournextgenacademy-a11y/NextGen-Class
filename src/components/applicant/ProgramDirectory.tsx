@@ -106,7 +106,7 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredPrograms.map(program => {
             const progCohorts = cohorts.filter(c => c.programId === program.id && c.status !== 'archived');
-            const activeOpenCohort = progCohorts.find(c => c.status === 'applications_open' || c.status === 'admissions_open' || c.status === 'assessment_phase');
+            const activeOpenCohort = progCohorts.find(c => c.status === 'applications_open' || c.status === 'admissions_open' || c.status === 'assessment_phase') || progCohorts[0];
 
             return (
               <div
