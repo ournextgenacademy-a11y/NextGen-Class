@@ -32,9 +32,22 @@ import {
   Code,
   Zap,
   Info,
-  ShieldCheck
+  ShieldCheck,
+  Globe,
+  ExternalLink,
+  Lock,
+  X
 } from 'lucide-react';
 import { interpolateVariables } from '../../notifications/notificationService';
+import { 
+  connectGmailAccount, 
+  disconnectGmailAccount, 
+  getCachedGmailAccount, 
+  getInMemoryGmailToken, 
+  sendEmailViaGmail,
+  ConnectedGmailAccount 
+} from '../../notifications/gmailService';
+
 
 export const CommunicationsCenter: React.FC = () => {
   const { 
@@ -90,6 +103,57 @@ export const CommunicationsCenter: React.FC = () => {
   const [logTypeFilter, setLogTypeFilter] = useState<string>('all');
   const [selectedLogDetail, setSelectedLogDetail] = useState<CommunicationLogEntry | null>(null);
   const [resendingLogId, setResendingLogId] = useState<string | null>(null);
+
+  // ==========================================
+  // GMAIL WORKSPACE INTEGRATION STATE
+  // ==========================================
+  const [gmailAccount, setGmailAccount] = useState<ConnectedGmailAccount | null>(getCachedGmailAccount());
+  const [isConnectingGmail, setIsConnectingGmail] = useState(false);
+  const [showTestEmailModal, setShowTestEmailModal] = useState(false);
+  const [testEmailTo, setTestEmailTo] = useState(applications[0]?.email || 'learner@nextgenacademy.org');
+  const [testEmailSubject, setTestEmailSubject] = useState('Welcome to NextGen Academy - Testing Gmail Delivery');
+  const [testEmailBody, setTestEmailBody] = useState('This is a verified test notification dispatched via the NextGen Google Workspace Gmail API integration to confirm learner email delivery.');
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; messageId?: string; error?: string } | null>(null);
+  const [showBroadcastConfirmModal, setShowBroadcastConfirmModal] = useState(false);
+
+  const handleConnectGmail = async () => {
+    setIsConnectingGmail(true);
+    const result = await connectGmailAccount();
+    setIsConnectingGmail(false);
+    if (result.success && result.account) {
+      setGmailAccount(result.account);
+    }
+  };
+
+  const handleDisconnectGmail = () => {
+    disconnectGmailAccount();
+    setGmailAccount(null);
+  };
+
+  const handleSendTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testEmailTo.trim() || !testEmailSubject.trim()) return;
+
+    setIsSendingTestEmail(true);
+    setTestEmailResult(null);
+
+    const result = await sendEmailViaGmail({
+      to: testEmailTo.trim(),
+      subject: testEmailSubject.trim(),
+      html: testEmailBody.replace(/\n/g, '<br />'),
+      text: testEmailBody,
+      fromName: 'NextGen Academy Admissions',
+    });
+
+    setIsSendingTestEmail(false);
+    setTestEmailResult({
+      success: result.success,
+      messageId: result.messageId,
+      error: result.error,
+    });
+  };
+
 
   // Available Merge Tag Chips
   const TEMPLATE_VARIABLES = [
@@ -165,11 +229,16 @@ export const CommunicationsCenter: React.FC = () => {
     }
   };
 
-  // Submit manual broadcast
-  const handleDispatchBroadcast = async (e: React.FormEvent) => {
+  // Trigger confirmation modal for broadcast
+  const handleDispatchBroadcast = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!broadcastSubject.trim() || !broadcastContent.trim()) return;
+    if (!broadcastSubject.trim() || !broadcastContent.trim() || targetRecipients.length === 0) return;
+    setShowBroadcastConfirmModal(true);
+  };
 
+  // Submit manual broadcast after confirmation
+  const handleConfirmAndSendBroadcast = async () => {
+    setShowBroadcastConfirmModal(false);
     setIsSending(true);
     await broadcastManualMessage({
       targetAudience,
@@ -180,7 +249,7 @@ export const CommunicationsCenter: React.FC = () => {
       subject: broadcastSubject,
       content: broadcastContent,
       channels: broadcastChannels,
-      tags: ['Manual Broadcast', `${targetRecipients.length} Recipients`],
+      tags: ['Manual Broadcast', `${targetRecipients.length} Recipients`, 'Gmail Dispatched'],
     });
 
     setIsSending(false);
@@ -188,6 +257,7 @@ export const CommunicationsCenter: React.FC = () => {
     setBroadcastContent('');
     setSelectedTemplateForBroadcast('');
   };
+
 
   // Filtered Logs
   const filteredLogs = communicationLogs.filter(log => {
@@ -317,6 +387,82 @@ export const CommunicationsCenter: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Google Workspace Gmail Integration Banner */}
+      <div className="bg-gradient-to-r from-zinc-900 via-slate-900 to-zinc-900 border border-zinc-700/80 rounded-2xl p-5 text-white shadow-lg">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-start space-x-3.5">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center shrink-0 mt-0.5">
+              <svg className="w-6 h-6" viewBox="0 0 24 24">
+                <path
+                  fill="#EA4335"
+                  d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.8 14.8 1 12 1 7.7 1 4 3.5 2.2 7.1l3.7 2.8C6.8 7.3 9.2 5 12 5z"
+                />
+                <path
+                  fill="#4285F4"
+                  d="M22.6 12.3c0-.8-.1-1.5-.2-2.3H12v4.3h5.9c-.3 1.4-1 2.5-2.2 3.3v2.8h3.6c2.1-1.9 3.3-4.7 3.3-8.1z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.8 14.1c-.2-.7-.3-1.4-.3-2.1s.1-1.4.3-2.1V7.1H2.2C1.4 8.6 1 10.2 1 12s.4 3.4 1.2 4.9l3.6-2.8z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.8c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.2v2.8C4 20.5 7.7 23 12 23z"
+                />
+              </svg>
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="font-bold text-sm font-['Space_Grotesk']">Google Workspace Gmail Service</span>
+                <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Active OAuth Pipeline</span>
+                </span>
+              </div>
+              <p className="text-xs text-zinc-300 mt-1">
+                Automated applicant emails and manager communications are dispatched via Google Workspace Gmail (<span className="text-orange-400 font-mono font-medium">{gmailAccount?.email || 'ournextgenacademy@gmail.com'}</span>).
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="text-[10px] bg-zinc-800 border border-zinc-700 text-zinc-300 px-2 py-0.5 rounded-md font-mono">
+                  Scope: mail.google.com
+                </span>
+                <span className="text-[10px] bg-zinc-800 border border-zinc-700 text-zinc-300 px-2 py-0.5 rounded-md font-mono">
+                  Scope: gmail.send
+                </span>
+                <span className="text-[10px] bg-zinc-800 border border-zinc-700 text-zinc-300 px-2 py-0.5 rounded-md font-mono">
+                  Scope: gmail.compose
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setTestEmailResult(null);
+                setShowTestEmailModal(true);
+              }}
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-600 transition cursor-pointer"
+            >
+              <Mail className="w-3.5 h-3.5 text-orange-400" />
+              <span>Send Test Learner Email</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleConnectGmail}
+              disabled={isConnectingGmail}
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20 transition cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isConnectingGmail ? 'animate-spin' : ''}`} />
+              <span>{isConnectingGmail ? 'Authorizing...' : (getInMemoryGmailToken() ? 'Re-authenticate Gmail' : 'Link Gmail Account')}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
 
       {/* ========================================================================= */}
       {/* 1. TEMPLATES & AUTOMATION MANAGEMENT VIEW                                 */}
@@ -1266,6 +1412,201 @@ export const CommunicationsCenter: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: BROADCAST CONFIRMATION (Workspace Safety Requirement)              */}
+      {/* ========================================================================= */}
+      {showBroadcastConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 font-bold">
+                  <Send className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 font-['Space_Grotesk']">
+                    Confirm Broadcast Dispatch
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Verify recipient volume and delivery channels before sending.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBroadcastConfirmModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Target Audience:</span>
+                <span className="font-bold text-slate-900 capitalize">{targetAudience} Mode</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Total Recipients:</span>
+                <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                  {targetRecipients.length} Candidates
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Email Pipeline:</span>
+                <span className="font-bold text-slate-900 flex items-center space-x-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                  <span>Gmail API ({gmailAccount?.email || 'ournextgenacademy@gmail.com'})</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold text-slate-700">Subject Preview:</div>
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-medium text-slate-900 text-xs">
+                {broadcastSubject}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold text-slate-700">Body Preview:</div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 text-[11px] max-h-36 overflow-y-auto whitespace-pre-line leading-relaxed">
+                {broadcastContent}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowBroadcastConfirmModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAndSendBroadcast}
+                className="flex items-center space-x-1.5 px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold transition cursor-pointer shadow-md shadow-orange-500/20"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Confirm & Send via Gmail</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: TEST LEARNER EMAIL (Gmail REST API Verification)                    */}
+      {/* ========================================================================= */}
+      {showTestEmailModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 text-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 font-bold">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 font-['Space_Grotesk']">
+                    Send Test Email via Gmail API
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Verify live Gmail REST API deliverability to any learner address.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTestEmailModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {testEmailResult && (
+              <div className={`p-3.5 rounded-2xl border ${
+                testEmailResult.success 
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
+                  : 'bg-rose-50 border-rose-200 text-rose-900'
+              }`}>
+                <div className="flex items-center space-x-2 font-bold text-xs">
+                  {testEmailResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-rose-600" />}
+                  <span>{testEmailResult.success ? 'Email Dispatched Successfully!' : 'Gmail Dispatch Error'}</span>
+                </div>
+                <div className="text-[11px] mt-1">
+                  {testEmailResult.success 
+                    ? `Message ID: ${testEmailResult.messageId} • Successfully delivered to ${testEmailTo}.` 
+                    : testEmailResult.error || 'Please re-authenticate your Google account to grant live Gmail sending permissions.'}
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSendTestEmail} className="space-y-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 text-[11px]">Recipient Email</label>
+                <input
+                  type="email"
+                  value={testEmailTo}
+                  onChange={e => setTestEmailTo(e.target.value)}
+                  required
+                  placeholder="learner@example.com"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs font-medium outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 text-[11px]">Subject</label>
+                <input
+                  type="text"
+                  value={testEmailSubject}
+                  onChange={e => setTestEmailSubject(e.target.value)}
+                  required
+                  className="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs font-medium outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 text-[11px]">Message Body</label>
+                <textarea
+                  rows={4}
+                  value={testEmailBody}
+                  onChange={e => setTestEmailBody(e.target.value)}
+                  required
+                  className="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs font-medium outline-none focus:border-orange-500 leading-relaxed"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowTestEmailModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingTestEmail}
+                  className="flex items-center space-x-1.5 px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold transition cursor-pointer shadow-md shadow-orange-500/20 disabled:opacity-50"
+                >
+                  {isSendingTestEmail ? (
+                    <span>Sending via Gmail API...</span>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send via Gmail API</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

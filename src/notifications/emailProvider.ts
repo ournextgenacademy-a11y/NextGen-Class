@@ -1,6 +1,8 @@
+import { sendEmailViaGmail, wrapInBrandedEmailTemplate, getCachedGmailAccount, getInMemoryGmailToken } from './gmailService';
+
 /**
  * Transactional Email Provider Abstraction
- * Supports SMTP, SendGrid, Resend, Postmark, Mailgun, or Mock logging
+ * Powered by Google Workspace Gmail REST API & Fallback
  */
 export interface EmailPayload {
   to: string | string[];
@@ -9,6 +11,7 @@ export interface EmailPayload {
   text?: string;
   from?: string;
   replyTo?: string;
+  recipientName?: string;
   attachments?: Array<{
     filename: string;
     content: Buffer | string;
@@ -21,6 +24,10 @@ export interface EmailSendResult {
   success: boolean;
   timestamp: Date;
   recipientCount: number;
+  channel?: 'gmail_api' | 'simulated_fallback';
+  error?: string;
+  threadId?: string;
+  senderEmail?: string;
 }
 
 export interface EmailProvider {
@@ -32,19 +39,36 @@ export class PluggableEmailProvider implements EmailProvider {
   private defaultFrom: string;
 
   constructor() {
-    this.defaultFrom = process.env.EMAIL_FROM || 'admissions@nextgenacademy.org';
+    this.defaultFrom = process.env.EMAIL_FROM || 'ournextgenacademy@gmail.com';
   }
 
   async sendEmail(payload: EmailPayload): Promise<EmailSendResult> {
     const recipients = Array.isArray(payload.to) ? payload.to : [payload.to];
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Format HTML if raw text or partial HTML provided
+    const formattedHtml = payload.html.includes('<!DOCTYPE html>')
+      ? payload.html
+      : wrapInBrandedEmailTemplate(payload.html, payload.subject, payload.recipientName);
 
-    // In non-production or default mode, record and return successful dispatch
+    // Dispatch using Google Gmail API
+    const result = await sendEmailViaGmail({
+      to: recipients,
+      subject: payload.subject,
+      html: formattedHtml,
+      text: payload.text,
+      fromName: 'NextGen Academy Admissions',
+      replyTo: payload.replyTo || this.defaultFrom,
+    });
+
     return {
-      messageId,
-      success: true,
-      timestamp: new Date(),
-      recipientCount: recipients.length,
+      messageId: result.messageId,
+      success: result.success,
+      timestamp: result.timestamp,
+      recipientCount: result.recipientCount,
+      channel: result.deliveryChannel,
+      error: result.error,
+      threadId: result.threadId,
+      senderEmail: result.senderEmail,
     };
   }
 
@@ -54,3 +78,4 @@ export class PluggableEmailProvider implements EmailProvider {
 }
 
 export const emailProvider: EmailProvider = new PluggableEmailProvider();
+

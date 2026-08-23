@@ -48,6 +48,8 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
     programs, 
     cohorts, 
     assessments, 
+    forms,
+    getPublishedFormForProgramme,
     deleteDraftApplication,
     setActivePortal, 
     setApplicantTab,
@@ -620,8 +622,50 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
                 </div>
               )}
 
-              {/* 5. SUBMITTED / UNDER REVIEW / ASSESSMENT COMPLETED */}
-              {(activeApp.status === 'submitted' || activeApp.status === 'under_review' || activeApp.status === 'assessment_completed') && (
+              {/* 5. ASSESSMENT COMPLETED STATE */}
+              {activeApp.status === 'assessment_completed' && (
+                <div className="bg-emerald-50/80 rounded-2xl p-6 border border-emerald-200 flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-start space-x-4">
+                    <div className="p-3 bg-emerald-100 rounded-xl text-emerald-700 shrink-0">
+                      <CheckCircle2 className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-emerald-800 uppercase tracking-wide flex items-center space-x-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Assessment Completed Successfully • Awaiting Decision</span>
+                      </div>
+                      <h4 className="text-base font-bold text-zinc-900 mt-1">
+                        Screening assessment completed (Score: {activeApp.assessmentScore}%). Awaiting decision from the NextGen team.
+                      </h4>
+                      <p className="text-xs text-zinc-600 mt-1 max-w-xl leading-relaxed">
+                        Your screening assessment answers and complete candidate dossier have been received and are undergoing final review by the admissions board. Please await decision from the NextGen team.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowViewDossierModal(true)}
+                      className="flex items-center space-x-1.5 text-xs font-semibold text-zinc-800 hover:text-zinc-900 bg-white hover:bg-zinc-100 px-4 py-2.5 rounded-xl border border-zinc-300 transition cursor-pointer shadow-2xs"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View Submitted Dossier</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setApplicantTab('assessments')}
+                      className="flex items-center space-x-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-950 bg-emerald-100 hover:bg-emerald-200 px-4 py-2.5 rounded-xl border border-emerald-300 transition cursor-pointer"
+                    >
+                      <Award className="w-3.5 h-3.5" />
+                      <span>View Assessment Result</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 5b. SUBMITTED / UNDER REVIEW STATE */}
+              {(activeApp.status === 'submitted' || activeApp.status === 'under_review') && (
                 <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-200 flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center space-x-4">
                     <div className="p-3 bg-zinc-200 rounded-xl text-zinc-700 shrink-0">
@@ -629,17 +673,13 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-bold text-zinc-700 uppercase tracking-wide">
-                        {activeApp.status === 'assessment_completed' ? 'Assessment Completed • Final Review' : 'Application Form Submitted & In Review'}
+                        Application Form Received • Under Faculty Review
                       </div>
                       <h4 className="text-base font-bold text-zinc-900 mt-1">
-                        {activeApp.status === 'assessment_completed' 
-                          ? `Screening test completed (Score: ${activeApp.assessmentScore}%). Admissions board is finalizing results.`
-                          : 'NextGen Admissions Faculty is reviewing your submitted application form.'}
+                        NextGen Admissions Faculty is reviewing your submitted application form.
                       </h4>
-                      <p className="text-xs text-zinc-600 mt-1">
-                        {activeApp.assessmentScore 
-                          ? 'Review board is completing holistic evaluation and scholarship allocation.'
-                          : 'Your screening assessment will unlock as soon as the Program Manager moves your candidate status to "Assessment Pending".'}
+                      <p className="text-xs text-zinc-600 mt-1 max-w-xl leading-relaxed">
+                        Your application form has been received and is under faculty review. You can proceed with the screening assessment only when your application has been moved to "Assessment Pending" status by the Program Manager.
                       </p>
                     </div>
                   </div>
@@ -863,159 +903,257 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
       )}
 
       {/* View Submitted Dossier Modal (Read-Only) */}
-      {showViewDossierModal && activeApp && (
-        <div className="fixed inset-0 bg-zinc-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-zinc-200">
-            <div className="p-5 bg-zinc-900 text-white flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Lock className="w-4 h-4 text-orange-400" />
-                <h3 className="text-base font-bold font-['Space_Grotesk']">
-                  Submitted Candidate Dossier #{activeApp.id}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowViewDossierModal(false)}
-                className="p-1.5 text-zinc-400 hover:text-white rounded-lg transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {showViewDossierModal && activeApp && (() => {
+        const associatedForm = forms.find(f => f.id === activeApp.formId) || getPublishedFormForProgramme(activeApp.programId, activeApp.cohortId);
+        
+        // Build question label lookup
+        const fieldLookup = new Map<string, { label: string; fieldType: string; sectionTitle: string }>();
+        if (associatedForm) {
+          associatedForm.sections.forEach(sec => {
+            sec.fields.forEach(fld => {
+              fieldLookup.set(fld.id, {
+                label: fld.label,
+                fieldType: fld.fieldType,
+                sectionTitle: sec.title,
+              });
+            });
+          });
+        }
 
-            <div className="p-6 overflow-y-auto space-y-6 text-xs text-zinc-800">
-              {/* Program & Status */}
-              <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-zinc-500">Track & Cohort</div>
-                  <div className="text-sm font-bold text-zinc-900">{activeProg?.name} • {activeCohort?.name}</div>
-                  <div className="text-zinc-500 text-[11px] mt-0.5">Applied: {activeApp.appliedDate}</div>
+        return (
+          <div className="fixed inset-0 bg-zinc-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+            <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-zinc-200">
+              <div className="p-5 bg-zinc-900 text-white flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Lock className="w-4 h-4 text-orange-400" />
+                  <h3 className="text-base font-bold font-['Space_Grotesk']">
+                    Submitted Candidate Dossier #{activeApp.id}
+                  </h3>
                 </div>
-                <div>{renderStatusBadge(activeApp.status)}</div>
-              </div>
-
-              {/* Personal Details */}
-              <div className="space-y-2">
-                <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                  Personal & Academic Details
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Name</span>
-                    <div className="font-medium text-zinc-900">{activeApp.fullName}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Email</span>
-                    <div className="font-medium text-zinc-900">{activeApp.email}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Phone</span>
-                    <div className="font-medium text-zinc-900">{activeApp.phone}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Location</span>
-                    <div className="font-medium text-zinc-900">{activeApp.city}, {activeApp.country}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Education</span>
-                    <div className="font-medium text-zinc-900">{activeApp.educationLevel}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Discipline</span>
-                    <div className="font-medium text-zinc-900">{activeApp.fieldOfStudy}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Experience</span>
-                    <div className="font-medium text-zinc-900">{activeApp.yearsExperience}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Employment</span>
-                    <div className="font-medium text-zinc-900">{activeApp.employmentStatus}</div>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowViewDossierModal(false)}
+                  className="p-1.5 text-zinc-400 hover:text-white rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Motivation & Vision */}
-              <div className="space-y-2">
-                <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                  Motivation & Vision Statements
-                </div>
-                <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3">
+              <div className="p-6 overflow-y-auto space-y-6 text-xs text-zinc-800">
+                {/* Program & Status */}
+                <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Why NextGen Academy:</span>
-                    <p className="text-zinc-800 mt-1 leading-relaxed">{activeApp.motivationStatement}</p>
+                    <div className="text-[10px] uppercase font-bold text-zinc-500">Track & Cohort</div>
+                    <div className="text-sm font-bold text-zinc-900">{activeProg?.name} • {activeCohort?.name}</div>
+                    <div className="text-zinc-500 text-[11px] mt-0.5">Applied: {activeApp.appliedDate}</div>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Career Goals:</span>
-                    <p className="text-zinc-800 mt-1 leading-relaxed">{activeApp.goalsStatement}</p>
-                  </div>
+                  <div>{renderStatusBadge(activeApp.status)}</div>
                 </div>
-              </div>
 
-              {/* Dynamic Form Responses */}
-              {activeApp.customAnswers && Object.keys(activeApp.customAnswers).length > 0 && (
+                {/* Candidate Identity */}
                 <div className="space-y-2">
                   <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                    Custom Dynamic Form Answers
+                    Candidate Details
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
-                    {Object.entries(activeApp.customAnswers).map(([k, val]) => (
-                      <div key={k} className="bg-white p-3 rounded-lg border border-zinc-200">
-                        <div className="text-[10px] text-zinc-500 font-semibold">{k}</div>
-                        <div className="font-medium text-zinc-900 mt-0.5">
-                          {Array.isArray(val) ? val.join(', ') : String(val)}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                    <div>
+                      <span className="text-[10px] text-zinc-500 uppercase font-semibold">Full Name</span>
+                      <div className="font-medium text-zinc-900">{activeApp.fullName}</div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-zinc-500 uppercase font-semibold">Email Address</span>
+                      <div className="font-medium text-zinc-900">{activeApp.email}</div>
+                    </div>
+                    {activeApp.phone && (
+                      <div>
+                        <span className="text-[10px] text-zinc-500 uppercase font-semibold">Phone Number</span>
+                        <div className="font-medium text-zinc-900">{activeApp.phone}</div>
+                      </div>
+                    )}
+                    {(activeApp.city || activeApp.country) && (
+                      <div>
+                        <span className="text-[10px] text-zinc-500 uppercase font-semibold">Location</span>
+                        <div className="font-medium text-zinc-900">
+                          {[activeApp.city, activeApp.country].filter(Boolean).join(', ')}
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
-              )}
 
-              {/* Uploaded Documents */}
-              {activeApp.uploadedFiles && Object.keys(activeApp.uploadedFiles).length > 0 && (
-                <div className="space-y-2">
-                  <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                    Attached Documents
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
-                    {Object.entries(activeApp.uploadedFiles).map(([k, file]) => {
-                      const fileRecord = file as UploadedFileRecord;
+                {/* Structured Form Responses Grouped by Form Sections */}
+                {associatedForm && associatedForm.sections.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
+                      Application Form Responses ({associatedForm.title})
+                    </div>
+                    {associatedForm.sections.map((sec, sIdx) => {
+                      const relevantFields = sec.fields.filter(f => f.fieldType !== 'file_upload');
+                      if (relevantFields.length === 0) return null;
+
                       return (
-                        <div key={k} className="bg-white p-3 rounded-lg border border-zinc-200 flex items-center justify-between">
-                          <div className="truncate">
-                            <div className="text-[10px] text-zinc-500 font-semibold truncate">{k}</div>
-                            <div className="font-bold text-zinc-900 truncate">📎 {fileRecord.fileName}</div>
-                            <div className="text-[10px] text-zinc-400">{fileRecord.fileSizeMb} MB</div>
+                        <div key={sec.id || sIdx} className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3">
+                          <div className="font-bold text-zinc-900 text-xs flex items-center space-x-2 border-b border-zinc-200/80 pb-2">
+                            <span className="w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+                              {sIdx + 1}
+                            </span>
+                            <span>{sec.title}</span>
                           </div>
-                          {fileRecord.fileUrl && (
-                            <a
-                              href={fileRecord.fileUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg shrink-0"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </a>
-                          )}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {relevantFields.map(f => {
+                              const ans = activeApp.customAnswers?.[f.id] !== undefined 
+                                ? activeApp.customAnswers[f.id] 
+                                : (activeApp as any)[f.id];
+                              
+                              if (ans === undefined || ans === null || ans === '') return null;
+
+                              return (
+                                <div key={f.id} className="bg-white p-3 rounded-lg border border-zinc-200 space-y-1">
+                                  <div className="text-[10px] text-zinc-500 font-semibold">{f.label}</div>
+                                  <div className="font-medium text-zinc-900">
+                                    {Array.isArray(ans) ? ans.join(', ') : typeof ans === 'boolean' ? (ans ? 'Yes' : 'No') : String(ans)}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              )}
-            </div>
+                ) : activeApp.customAnswers && Object.keys(activeApp.customAnswers).length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
+                      Application Responses
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                      {Object.entries(activeApp.customAnswers).map(([k, val]) => (
+                        <div key={k} className="bg-white p-3 rounded-lg border border-zinc-200">
+                          <div className="text-[10px] text-zinc-500 font-semibold">{fieldLookup.get(k)?.label || k}</div>
+                          <div className="font-medium text-zinc-900 mt-0.5">
+                            {Array.isArray(val) ? val.join(', ') : String(val)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
-            <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowViewDossierModal(false)}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl cursor-pointer"
-              >
-                Close Dossier
-              </button>
+                {/* Candidate Statements if answered and not in form */}
+                {(activeApp.motivationStatement || activeApp.goalsStatement) && (
+                  <div className="space-y-2">
+                    <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
+                      Candidate Statements
+                    </div>
+                    <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3">
+                      {activeApp.motivationStatement && (
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-semibold">Motivation Statement:</span>
+                          <p className="text-zinc-800 mt-1 leading-relaxed bg-white p-3 rounded-lg border border-zinc-200">
+                            {activeApp.motivationStatement}
+                          </p>
+                        </div>
+                      )}
+                      {activeApp.goalsStatement && (
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-semibold">Career Goals:</span>
+                          <p className="text-zinc-800 mt-1 leading-relaxed bg-white p-3 rounded-lg border border-zinc-200">
+                            {activeApp.goalsStatement}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Attached Documents */}
+                {activeApp.uploadedFiles && Object.keys(activeApp.uploadedFiles).length > 0 && (
+                  <div className="space-y-2">
+                    <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
+                      Attached Documents ({Object.keys(activeApp.uploadedFiles).length})
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                      {Object.entries(activeApp.uploadedFiles).map(([k, file]) => {
+                        const fileRecord = file as UploadedFileRecord;
+                        const docLabel = fieldLookup.get(k)?.label || k.replace(/_/g, ' ');
+                        return (
+                          <div key={k} className="bg-white p-3 rounded-lg border border-zinc-200 flex items-center justify-between">
+                            <div className="truncate pr-2">
+                              <div className="text-[10px] text-zinc-500 font-semibold truncate uppercase">{docLabel}</div>
+                              <div className="font-bold text-zinc-900 truncate mt-0.5">📎 {fileRecord.fileName}</div>
+                              <div className="text-[10px] text-zinc-400">{fileRecord.fileSizeMb || '1.0'} MB</div>
+                            </div>
+                            {fileRecord.fileUrl && (
+                              <a
+                                href={fileRecord.fileUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg shrink-0"
+                                title="View Document"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Candidate Links */}
+                {(activeApp.linkedinUrl || activeApp.githubUrl || activeApp.portfolioUrl) && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {activeApp.linkedinUrl && (
+                      <a
+                        href={activeApp.linkedinUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center space-x-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-3 py-1.5 rounded-lg transition font-medium"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                        <span>LinkedIn</span>
+                      </a>
+                    )}
+                    {activeApp.githubUrl && (
+                      <a
+                        href={activeApp.githubUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center space-x-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-3 py-1.5 rounded-lg transition font-medium"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-zinc-800" />
+                        <span>GitHub</span>
+                      </a>
+                    )}
+                    {activeApp.portfolioUrl && (
+                      <a
+                        href={activeApp.portfolioUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center space-x-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-3 py-1.5 rounded-lg transition font-medium"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-orange-600" />
+                        <span>Portfolio</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowViewDossierModal(false)}
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Close Dossier
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Offer Modal */}
       {showOfferModal && activeApp && activeProg && activeCohort && (

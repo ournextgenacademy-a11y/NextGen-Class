@@ -445,18 +445,26 @@ export async function dispatchNotificationEvent(params: {
 
   // 1. Dispatch Email Abstraction
   let emailDeliveryNote = 'Email skipped (channel off)';
+  let isEmailSuccessful = true;
   if (channels.email) {
     try {
       const emailRes = await emailProvider.sendEmail({
         to: recipientEmail,
+        recipientName,
         subject,
-        html: `<div style="font-family: sans-serif; line-height: 1.6; color: #1e293b; white-space: pre-line;">${content}</div>`,
+        html: content,
         text: content,
       });
-      emailDeliveryNote = emailRes.success 
-        ? `SMTP Mock Dispatch 200 OK (${emailRes.messageId})`
-        : 'Email failed';
+      if (emailRes.channel === 'gmail_api' && emailRes.success) {
+        emailDeliveryNote = `Gmail API 200 OK (${emailRes.messageId})`;
+      } else if (emailRes.success) {
+        emailDeliveryNote = `Email Sent (${emailRes.messageId})`;
+      } else {
+        isEmailSuccessful = false;
+        emailDeliveryNote = `Gmail Delivery Notice: ${emailRes.error || 'Pending OAuth reconnect'}`;
+      }
     } catch (err: any) {
+      isEmailSuccessful = false;
       emailDeliveryNote = `Email error: ${err?.message || 'Delivery error'}`;
     }
   }

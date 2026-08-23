@@ -248,8 +248,28 @@ export const ApplicantAssessmentsTab: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* RULE 2: Awaiting Manager Approval to Move to Assessment Pending */}
-          {!isAssessmentAuthorized && (
+          {/* RULE 2: Awaiting Manager Approval or Assessment Completed */}
+          {hasTaken ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start space-x-3.5">
+                <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 shrink-0 mt-0.5">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-950">
+                    Assessment Completed Successfully • Awaiting Decision
+                  </h4>
+                  <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                    Your screening assessment has been completed and recorded successfully (Score: <strong>{activeApp?.assessmentScore}%</strong>). Your application and assessment results are under evaluation by the NextGen Admissions Board. Please await decision from the NextGen team.
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 bg-white border border-emerald-300 text-emerald-900 text-xs font-bold px-4 py-2 rounded-xl flex items-center space-x-1.5 shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Status: ASSESSMENT COMPLETED</span>
+              </div>
+            </div>
+          ) : !isAssessmentAuthorized ? (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-start space-x-3.5">
                 <div className="p-2.5 bg-amber-100 rounded-xl text-amber-700 shrink-0 mt-0.5">
@@ -260,16 +280,16 @@ export const ApplicantAssessmentsTab: React.FC = () => {
                     Assessment Phase Locked: Awaiting Program Manager Authorization
                   </h4>
                   <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-                    Your application form has been received and is under faculty review. You can proceed with the screening assessment <strong>only when your application has been moved to "Assessment Pending" status</strong> by the Program Manager.
+                    Your application form has been received and is under faculty review. You can proceed with the screening assessment only when your application has been moved to "Assessment Pending" status by the Program Manager.
                   </p>
                 </div>
               </div>
               <div className="shrink-0 bg-white border border-amber-300 text-amber-900 text-xs font-bold px-4 py-2 rounded-xl flex items-center space-x-1.5 shadow-2xs">
                 <Clock className="w-3.5 h-3.5 text-amber-600" />
-                <span>Current Status: {activeApp?.status.replace('_', ' ').toUpperCase()}</span>
+                <span>Current Status: {(activeApp?.status || '').replace('_', ' ').toUpperCase()}</span>
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Main Grid: Left Assessment Selection & Details, Right Resources Panel */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
