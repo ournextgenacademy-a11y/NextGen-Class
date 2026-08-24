@@ -505,9 +505,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 4. Synchronize Applications from Firestore
     const unsubApplications = onSnapshot(collection(db, 'applications'), (snapshot) => {
-      if (!snapshot.empty) {
+      if (snapshot.empty) {
+        try {
+          const batch = writeBatch(db);
+          SEED_APPLICATIONS.forEach(a => {
+            batch.set(doc(db, 'applications', a.id), cleanForFirestore(a));
+          });
+          batch.commit().catch(() => {});
+        } catch (_) {}
+      } else {
         const liveApps = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Application));
-        setApplications(liveApps);
+        setApplications(prev => {
+          const liveMap = new Map(liveApps.map(a => [a.id, a]));
+          const merged = liveApps.slice();
+          prev.forEach(localApp => {
+            if (!liveMap.has(localApp.id)) {
+              merged.push(localApp);
+            }
+          });
+          return merged;
+        });
       }
     }, (err) => console.warn('Firestore applications listener note:', err));
 
@@ -629,6 +646,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     if (result.inAppMessage) {
       setMessages(prev => [result.inAppMessage!, ...prev.filter(m => m.id !== result.inAppMessage!.id)]);
+      syncDocToFirestore('messages', result.inAppMessage!.id, result.inAppMessage!);
     }
 
     return result;
@@ -1961,7 +1979,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setApplications(prev => prev.map(app => {
       if (app.id !== appId) return app;
 
-      return {
+      const updatedApp = {
         ...app,
         rubricEvaluation: rubric,
         updatedDate: new Date().toISOString().split('T')[0],
@@ -1973,10 +1991,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             description: `Evaluator: ${rubric.evaluatedBy} (Recommendation: ${(rubric.overallRecommendation || '').toUpperCase()})`,
             timestamp: now,
             actor: rubric.evaluatedBy,
-            type: 'note',
+            type: 'note' as const,
           },
         ],
       };
+      syncDocToFirestore('applications', appId, updatedApp);
+      return updatedApp;
     }));
 
     addToast({
@@ -2002,7 +2022,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setApplications(prev => prev.map(app => {
       if (app.id !== appId) return app;
       const existingNotes = app.internalNotes || [];
-      return {
+      const updatedApp = {
         ...app,
         internalNotes: [newNote, ...existingNotes],
         updatedDate: new Date().toISOString().split('T')[0],
@@ -2014,10 +2034,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             description: `"${content.length > 60 ? content.slice(0, 57) + '...' : content}"`,
             timestamp: now,
             actor: currentUser.name,
-            type: 'note',
+            type: 'note' as const,
           },
         ],
       };
+      syncDocToFirestore('applications', appId, updatedApp);
+      return updatedApp;
     }));
 
     addToast({
@@ -2048,7 +2070,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         verifiedAt: now,
       };
 
-      return {
+      const updatedApp = {
         ...app,
         uploadedFiles: {
           ...files,
@@ -2063,10 +2085,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             description: note ? `Reviewer note: ${note}` : `Verification marked as ${status} by ${currentUser.name}.`,
             timestamp: now,
             actor: currentUser.name,
-            type: 'note',
+            type: 'note' as const,
           },
         ],
       };
+      syncDocToFirestore('applications', appId, updatedApp);
+      return updatedApp;
     }));
 
     addToast({
@@ -2531,7 +2555,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         type: 'assessment',
       };
 
-      return {
+      const updatedApp = {
         ...app,
         assessmentScore: percentage,
         status: app.status === 'admitted' || app.status === 'accepted' || app.status === 'rejected' || app.status === 'enrolled' 
@@ -2539,6 +2563,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : 'assessment_completed',
         timeline: [timelineEvent, ...app.timeline],
       };
+      syncDocToFirestore('applications', applicationId, updatedApp);
+      return updatedApp;
     }));
   };
 
@@ -2578,7 +2604,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         type: 'admissions',
       };
 
-      return {
+      const updatedApp = {
         ...app,
         status: normalizedDecision,
         offerLetterSentDate: normalizedDecision === 'admitted' ? today : app.offerLetterSentDate,
@@ -2586,6 +2612,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         scholarshipPercentage: normalizedDecision === 'admitted' ? 100 : app.scholarshipPercentage,
         timeline: [timelineEvent, ...app.timeline],
       };
+      syncDocToFirestore('applications', applicationId, updatedApp);
+      return updatedApp;
     }));
 
     // 2. When ACCEPTED: Prepare applicant for future learner enrolment & create learner record according to defined transition workflow
@@ -2612,14 +2640,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (exists) return prev;
         return [newLearner, ...prev];
       });
+      syncDocToFirestore('learners', newLearner.id, newLearner);
 
       // Update cohort admitted counts
       setCohorts(prev => prev.map(c => {
         if (c.id !== targetApp.cohortId) return c;
-        return {
+        const updatedCohort = {
           ...c,
           admittedCount: (c.admittedCount || 0) + 1,
         };
+        syncDocToFirestore('cohorts', c.id, updatedCohort);
+        return updatedCohort;
       }));
 
       const prog = programs.find(p => p.id === targetApp.programId);
@@ -2729,9 +2760,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Mark application as enrolled
     setApplications(prev => prev.map(app => {
       if (app.id !== applicationId) return app;
-      return {
+      const updatedApp = {
         ...app,
-        status: 'enrolled',
+        status: 'enrolled' as const,
         offerAcceptedDate: today,
         timeline: [
           ...app.timeline,
@@ -2741,19 +2772,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             description: 'Candidate signed NextGen Learner Code of Conduct and officially enrolled.',
             timestamp: now,
             actor: app.fullName,
-            type: 'admissions',
+            type: 'admissions' as const,
           },
         ],
       };
+      syncDocToFirestore('applications', applicationId, updatedApp);
+      return updatedApp;
     }));
 
     // Update cohort counts
     setCohorts(prev => prev.map(c => {
       if (c.id !== targetApp.cohortId) return c;
-      return {
+      const updatedCohort = {
         ...c,
         enrolledCount: c.enrolledCount + 1,
       };
+      syncDocToFirestore('cohorts', c.id, updatedCohort);
+      return updatedCohort;
     }));
 
     // Create Learner Record
@@ -2779,6 +2814,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (exists) return prev;
       return [newLearner, ...prev];
     });
+    syncDocToFirestore('learners', newLearner.id, newLearner);
 
     // Send Welcome Message
     sendMessage({

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Assessment, AssessmentResource, Application } from '../../types';
 import { AssessmentRunner } from './AssessmentRunner';
+import { AdmissionOfferModal } from './AdmissionOfferModal';
 import { 
   checkAssessmentAvailability, 
   syncServerTime 
@@ -68,6 +69,7 @@ export const ApplicantAssessmentsTab: React.FC = () => {
   );
 
   const [activeTakingAssessment, setActiveTakingAssessment] = useState<Assessment | null>(null);
+  const [showOfferModal, setShowOfferModal] = useState(false);
 
   const currentAssessment = assessments.find(a => a.id === selectedAssessmentId) || cohortAssessment || assessments[0];
   const currentProg = programs.find(p => p.id === currentAssessment?.programId);
@@ -87,12 +89,15 @@ export const ApplicantAssessmentsTab: React.FC = () => {
   // Requirement: Application form must be filled and submitted first
   const hasSubmittedApplicationForm = Boolean(activeApp && activeApp.status !== 'draft');
 
-  // Requirement: Only when applicant has been moved to assessment pending (or invited/completed) from program manager end can they proceed
+  // Requirement: Only when applicant has been moved to assessment pending (or invited/completed/admitted/enrolled) from program manager end can they proceed
   const isAssessmentAuthorized = Boolean(
     activeApp && (
       activeApp.status === 'assessment_pending' || 
       activeApp.status === 'assessment_invited' || 
-      activeApp.status === 'assessment_completed'
+      activeApp.status === 'assessment_completed' ||
+      activeApp.status === 'admitted' ||
+      activeApp.status === 'accepted' ||
+      activeApp.status === 'enrolled'
     )
   );
 
@@ -250,7 +255,60 @@ export const ApplicantAssessmentsTab: React.FC = () => {
       ) : (
         <>
           {/* Dynamic Phase Status Banner according to Program Portal application status */}
-          {!isAssessmentAuthorized ? (
+          {activeApp?.status === 'enrolled' ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start space-x-3.5">
+                <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 shrink-0 mt-0.5">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-950">
+                    Enrollment Confirmed: Onboarding for learners will commence soon
+                  </h4>
+                  <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                    Your admission offer has been formally accepted for {activeCohort?.name}. Onboarding for learners will commence soon.
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center space-x-1.5 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                <span>Onboarding for learners will commence soon</span>
+              </div>
+            </div>
+          ) : activeApp?.status === 'admitted' || activeApp?.status === 'accepted' ? (
+            <div className="bg-linear-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-400 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm animate-pulse-subtle">
+              <div className="flex items-start space-x-3.5">
+                <div className="p-2.5 bg-emerald-600 rounded-xl text-white shrink-0 mt-0.5 shadow-sm">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                      Admission Decision
+                    </span>
+                    <span className="text-xs text-emerald-700 font-medium">
+                      Action Required
+                    </span>
+                  </div>
+                  <h4 className="text-base font-extrabold text-emerald-950 mt-1">
+                    Congratulations! You Have Been Admitted to {activeCohort?.name || 'the Programme'}
+                  </h4>
+                  <p className="text-xs text-emerald-800 mt-1 leading-relaxed max-w-2xl">
+                    Your official admission offer package is ready. You have been awarded a <strong>100% Full Tuition Scholarship</strong>. Please review and sign your acceptance contract to lock in your candidate seat.
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 flex items-center space-x-2">
+                <button
+                  onClick={() => setShowOfferModal(true)}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-md flex items-center space-x-2 transition-all cursor-pointer"
+                >
+                  <Award className="w-4 h-4" />
+                  <span>View & Sign Offer Letter</span>
+                </button>
+              </div>
+            </div>
+          ) : !isAssessmentAuthorized ? (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-start space-x-3.5">
                 <div className="p-2.5 bg-amber-100 rounded-xl text-amber-700 shrink-0 mt-0.5">
@@ -308,26 +366,6 @@ export const ApplicantAssessmentsTab: React.FC = () => {
               <div className="shrink-0 bg-white border border-emerald-300 text-emerald-900 text-xs font-bold px-4 py-2 rounded-xl flex items-center space-x-1.5 shadow-2xs">
                 <Award className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Current Status: ASSESSMENT COMPLETED</span>
-              </div>
-            </div>
-          ) : activeApp?.status === 'enrolled' ? (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-start space-x-3.5">
-                <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 shrink-0 mt-0.5">
-                  <GraduationCap className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-emerald-950">
-                    Enrollment Confirmed: Onboarding for learners will commence soon
-                  </h4>
-                  <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
-                    Your admission offer has been formally accepted for {activeCohort?.name}. Onboarding for learners will commence soon.
-                  </p>
-                </div>
-              </div>
-              <div className="shrink-0 bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center space-x-1.5 shadow-2xs">
-                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                <span>Onboarding for learners will commence soon</span>
               </div>
             </div>
           ) : null}
@@ -655,6 +693,16 @@ export const ApplicantAssessmentsTab: React.FC = () => {
             />
           </div>
         </div>
+      )}
+
+      {/* Admission Offer Modal */}
+      {showOfferModal && activeApp && activeCohort && activeProg && (
+        <AdmissionOfferModal
+          application={activeApp}
+          cohort={activeCohort}
+          program={activeProg}
+          onClose={() => setShowOfferModal(false)}
+        />
       )}
     </div>
   );

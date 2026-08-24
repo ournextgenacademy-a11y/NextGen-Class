@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Application, 
   Program, 
@@ -76,6 +76,10 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
   const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus>(application.status);
   const [statusChangeNote, setStatusChangeNote] = useState('');
   const [isApplyingStatus, setIsApplyingStatus] = useState(false);
+
+  useEffect(() => {
+    setSelectedStatus(application.status);
+  }, [application.status]);
 
   // New Note State
   const [newNoteText, setNewNoteText] = useState('');

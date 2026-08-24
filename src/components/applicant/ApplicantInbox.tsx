@@ -24,15 +24,25 @@ export const ApplicantInbox: React.FC<ApplicantInboxProps> = ({
   onOpenOfferModal,
   onTakeAssessment,
 }) => {
-  const { currentUser, messages, sendMessage, cohorts, programs } = useApp();
+  const { currentUser, messages, sendMessage, cohorts, programs, applications } = useApp();
   const [selectedMessage, setSelectedMessage] = useState<CommunicationMessage | null>(null);
   const [replyText, setReplyText] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'letters' | 'direct' | 'broadcast'>('all');
+
+  const myAppIds = new Set(
+    applications
+      .filter(a => a.applicantId === currentUser.id || (a.email && currentUser.email && a.email.toLowerCase() === currentUser.email.toLowerCase()))
+      .flatMap(a => [a.id, a.applicantId, a.email?.toLowerCase()])
+      .filter(Boolean)
+  );
 
   // Filter messages relevant to current applicant
   const userMessages = messages.filter(m => 
     m.recipientId === currentUser.id || 
     m.senderId === currentUser.id || 
+    (currentUser.email && m.recipientId?.toLowerCase() === currentUser.email.toLowerCase()) ||
+    myAppIds.has(m.recipientId) ||
+    (m.recipientId && myAppIds.has(m.recipientId.toLowerCase())) ||
     m.type === 'broadcast'
   );
 
