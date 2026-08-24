@@ -141,6 +141,15 @@ const MainLayout: React.FC = () => {
     }
   }, [currentPath]);
 
+  // Ensure that every page loads by showing the top of the page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [currentPath, activePortal, applicantTab, managerTab]);
+
   // ROUTE GUARD & RBAC DISPATCHER
   useEffect(() => {
     if (!isAuthenticated) {

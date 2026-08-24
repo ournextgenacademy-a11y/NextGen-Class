@@ -259,6 +259,15 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
          a.status !== 'draft'
   );
 
+  // Scroll to top on step changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [currentStep]);
+
   // Synchronize dynamic field edits with top-level model fields
   const handleCustomFieldChange = (fieldId: string, val: any) => {
     setFormData(prev => {

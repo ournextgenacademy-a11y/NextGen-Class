@@ -163,6 +163,8 @@ interface AppContextType {
   saveDraftApplication: (appData: Partial<Application>) => Application;
   submitApplication: (appData: Partial<Application>) => Application;
   deleteDraftApplication: (appId: string) => void;
+  deleteApplication: (appId: string) => void;
+  bulkDeleteApplications: (appIds: string[]) => void;
   updateApplicationStatus: (appId: string, status: ApplicationStatus, note?: string) => void;
   updateRubricEvaluation: (appId: string, rubric: RubricEvaluation) => void;
   addInternalNote: (appId: string, content: string, category?: InternalNote['category']) => void;
@@ -1648,9 +1650,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Application operations
   const saveDraftApplication = (appData: Partial<Application>): Application => {
+    const targetCohortId = appData.cohortId || 'cohort-genai-2';
+
+    // Guard: If applicant already has a submitted application for this cohort, prevent creating new drafts
+    const alreadySubmitted = applications.find(
+      a => (a.applicantId === currentUser.id || (a.email && currentUser.email && a.email.toLowerCase() === currentUser.email.toLowerCase())) &&
+           a.cohortId === targetCohortId &&
+           a.status !== 'draft'
+    );
+    if (alreadySubmitted) {
+      addToast({
+        title: 'Already Applied',
+        message: `You have already submitted an application for this cohort (${alreadySubmitted.id}).`,
+        type: 'info',
+      });
+      return alreadySubmitted;
+    }
+
     const existingIndex = applications.findIndex(
       a => (appData.id && a.id === appData.id) || 
-           (a.applicantId === currentUser.id && a.status === 'draft' && a.programId === appData.programId && a.cohortId === appData.cohortId)
+           (a.applicantId === currentUser.id && a.status === 'draft' && a.cohortId === targetCohortId)
     );
 
     const now = new Date().toISOString().split('T')[0];
@@ -1757,6 +1776,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast({
       title: 'Draft Discarded',
       message: 'Application draft has been removed.',
+      type: 'info',
+    });
+  };
+
+  const deleteApplication = (appId: string) => {
+    setApplications(prev => prev.filter(a => a.id !== appId));
+    deleteDocFromFirestore('applications', appId);
+    addToast({
+      title: 'Candidate Application Deleted',
+      message: `Candidate application #${appId} has been permanently deleted.`,
+      type: 'info',
+    });
+  };
+
+  const bulkDeleteApplications = (appIds: string[]) => {
+    if (appIds.length === 0) return;
+    setApplications(prev => prev.filter(a => !appIds.includes(a.id)));
+    appIds.forEach(id => deleteDocFromFirestore('applications', id));
+    addToast({
+      title: 'Candidate Applications Deleted',
+      message: `${appIds.length} candidate applications have been deleted.`,
       type: 'info',
     });
   };
@@ -2914,6 +2954,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveDraftApplication,
         submitApplication,
         deleteDraftApplication,
+        deleteApplication,
+        bulkDeleteApplications,
         updateApplicationStatus,
         updateRubricEvaluation,
         addInternalNote,

@@ -40,7 +40,8 @@ import {
   Plus,
   Tag,
   Download,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 
 interface ApplicationDetailDrawerProps {
@@ -63,7 +64,8 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
     toggleStarApplication,
     sendMessage,
     makeAdmissionDecision,
-    getPublishedFormForProgramme
+    getPublishedFormForProgramme,
+    deleteApplication
   } = useApp();
 
   const program = programs.find(p => p.id === application.programId);
@@ -71,6 +73,9 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
   const publishedForm = getPublishedFormForProgramme(application.programId, application.cohortId);
 
   const [activeTab, setActiveTab] = useState<'form' | 'rubric' | 'notes' | 'decision' | 'timeline' | 'message'>('form');
+
+  // Candidate Deletion Modal
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Status Change State with Note
   const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus>(application.status);
@@ -198,12 +203,23 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-slate-400 hover:text-rose-400 p-2 rounded-lg hover:bg-slate-800 transition flex items-center space-x-1 text-xs cursor-pointer"
+              title="Delete Candidate Application"
+            >
+              <Trash2 className="w-4 h-4 text-rose-400" />
+              <span className="hidden sm:inline text-rose-300 font-semibold">Delete</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Quick Status Control Bar */}
@@ -644,18 +660,75 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
 
         {/* Drawer Footer */}
         <div className="p-4 px-6 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
-          <span className="text-slate-500">
-            Last Updated: <strong>{application.updatedDate || application.appliedDate}</strong>
-          </span>
           <button
-            onClick={onClose}
-            className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-xl transition cursor-pointer"
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="px-3 py-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 font-semibold rounded-xl transition cursor-pointer flex items-center space-x-1.5"
           >
-            Close Drawer
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Candidate Application</span>
           </button>
+          <div className="flex items-center space-x-3">
+            <span className="text-slate-500 hidden sm:inline">
+              Last Updated: <strong>{application.updatedDate || application.appliedDate}</strong>
+            </span>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-xl transition cursor-pointer"
+            >
+              Close Drawer
+            </button>
+          </div>
         </div>
 
       </div>
+
+      {/* Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 p-6 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-bold text-slate-900 font-['Space_Grotesk']">
+                Delete Candidate Application?
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Are you sure you want to permanently delete the application for <strong className="text-slate-800">{application.fullName}</strong> (Ref: <span className="font-mono">#{application.id}</span>)?
+              </p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start space-x-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>This will delete all submitted application answers, rubric scores, review notes, and verification logs.</span>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteApplication(application.id);
+                  setShowDeleteConfirm(false);
+                  onClose();
+                }}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center space-x-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Permanently Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
