@@ -407,6 +407,14 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
   };
 
   const handleNextStep = () => {
+    if (currentStep === 1 && alreadySubmittedApp) {
+      addToast({
+        title: 'Already Registered',
+        message: `You have already registered and submitted an application for this cohort (${alreadySubmittedApp.id}).`,
+        type: 'info',
+      });
+      return;
+    }
     if (validateStep(currentStep)) {
       setValidationErrors({});
       setCurrentStep(prev => Math.min(3, prev + 1));
@@ -621,7 +629,9 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
               <button
                 key={st.num}
                 type="button"
+                disabled={Boolean(alreadySubmittedApp && st.num > 1)}
                 onClick={() => {
+                  if (alreadySubmittedApp && st.num > 1) return;
                   if (st.num < currentStep || validateStep(currentStep)) {
                     setCurrentStep(st.num);
                   }
@@ -1014,7 +1024,13 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
               <button
                 type="button"
                 onClick={handleNextStep}
-                className="inline-flex items-center space-x-1.5 px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition cursor-pointer"
+                disabled={Boolean(alreadySubmittedApp)}
+                className={`inline-flex items-center space-x-1.5 px-5 py-2.5 rounded-xl text-xs font-bold transition ${
+                  alreadySubmittedApp
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none border border-slate-300'
+                    : 'bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20 cursor-pointer'
+                }`}
+                title={alreadySubmittedApp ? `Already registered to this cohort (${alreadySubmittedApp.id})` : undefined}
               >
                 <span>Continue to Questionnaire</span>
                 <ArrowRight className="w-3.5 h-3.5" />
