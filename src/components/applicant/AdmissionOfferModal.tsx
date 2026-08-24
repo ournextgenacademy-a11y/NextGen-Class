@@ -26,7 +26,7 @@ export const AdmissionOfferModal: React.FC<AdmissionOfferModalProps> = ({
   program,
   onClose,
 }) => {
-  const { acceptAdmissionOffer, setActivePortal } = useApp();
+  const { acceptAdmissionOffer, addToast } = useApp();
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -37,8 +37,11 @@ export const AdmissionOfferModal: React.FC<AdmissionOfferModalProps> = ({
       acceptAdmissionOffer(application.id);
       setSubmitting(false);
       onClose();
-      // Route user to Learner Portal to see their active syllabus and cohort schedule
-      setActivePortal('learner');
+      addToast({
+        title: 'Admission Offer Accepted',
+        message: 'Onboarding for learners will commence soon',
+        type: 'success',
+      });
     }, 600);
   };
 
@@ -100,7 +103,7 @@ export const AdmissionOfferModal: React.FC<AdmissionOfferModalProps> = ({
           {/* Official Letter Body */}
           <div className="text-xs text-slate-700 space-y-3 leading-relaxed border-l-2 border-orange-500 pl-4 py-1">
             <p>
-              The NextGen Admissions Board was deeply impressed by your background, application dossier, and outstanding screening score of <strong>{application.assessmentScore || 90}%</strong>.
+              The NextGen Admissions Board was deeply impressed by your background, application form, and outstanding screening score of <strong>{application.assessmentScore || 90}%</strong>.
             </p>
             <p>
               As a NextGen Class learner, you will gain hands-on mastery in production-grade technical skills, collaborate with high-caliber peers across Africa and globally, and build real-world capstone projects evaluated by industry mentors.

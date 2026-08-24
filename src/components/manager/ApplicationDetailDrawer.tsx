@@ -9,6 +9,7 @@ import {
   InternalNote 
 } from '../../types';
 import { useApp } from '../../context/AppContext';
+import { SubmittedApplicationFormView } from '../common/SubmittedApplicationFormView';
 import { 
   X, 
   User, 
@@ -61,13 +62,15 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
     updateDocumentVerification,
     toggleStarApplication,
     sendMessage,
-    makeAdmissionDecision 
+    makeAdmissionDecision,
+    getPublishedFormForProgramme
   } = useApp();
 
   const program = programs.find(p => p.id === application.programId);
   const cohort = cohorts.find(c => c.id === application.cohortId);
+  const publishedForm = getPublishedFormForProgramme(application.programId, application.cohortId);
 
-  const [activeTab, setActiveTab] = useState<'dossier' | 'rubric' | 'notes' | 'decision' | 'timeline' | 'message'>('dossier');
+  const [activeTab, setActiveTab] = useState<'form' | 'rubric' | 'notes' | 'decision' | 'timeline' | 'message'>('form');
 
   // Status Change State with Note
   const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus>(application.status);
@@ -227,12 +230,12 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
         {/* Navigation Tabs */}
         <div className="flex items-center border-b border-slate-200 px-6 bg-white text-xs font-semibold overflow-x-auto">
           <button
-            onClick={() => setActiveTab('dossier')}
+            onClick={() => setActiveTab('form')}
             className={`py-3 px-3 border-b-2 transition whitespace-nowrap ${
-              activeTab === 'dossier' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-900'
+              activeTab === 'form' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Candidate Dossier
+            Application Form
           </button>
           <button
             onClick={() => setActiveTab('notes')}
@@ -284,220 +287,14 @@ export const ApplicationDetailDrawer: React.FC<ApplicationDetailDrawerProps> = (
         {/* Scrollable Tab Content */}
         <div className="p-6 flex-1 overflow-y-auto space-y-6 text-xs text-slate-700">
           
-          {/* TAB 1: Candidate Dossier */}
-          {activeTab === 'dossier' && (
-            <div className="space-y-6">
-              {/* Contact & Demographics Card */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-                  Contact & Demographics
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-slate-700">
-                  <div className="flex items-center space-x-2">
-                    <Mail className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{application.email}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{application.phone}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{application.city}, {application.country}</span>
-                  </div>
-                  <div>
-                    Gender: <strong>{application.gender}</strong> • Age: <strong>{application.ageRange}</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Education & Experience Card */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-                  Education & Technical Background
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-slate-700">
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Education</span>
-                    <strong>{application.educationLevel}</strong> ({application.fieldOfStudy})
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Employment</span>
-                    <strong>{application.employmentStatus}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Experience</span>
-                    <strong>{application.yearsExperience}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Coding Proficiency</span>
-                    <strong>{application.programmingBackground}</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Motivation & Vision */}
-              <div className="space-y-3">
-                <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-                  Motivation Statement
-                </div>
-                <div className="p-3.5 bg-white rounded-xl border border-slate-200 leading-relaxed text-slate-800">
-                  {application.motivationStatement}
-                </div>
-
-                <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px] pt-2">
-                  6-Month Goals & Career Impact
-                </div>
-                <div className="p-3.5 bg-white rounded-xl border border-slate-200 leading-relaxed text-slate-800">
-                  {application.goalsStatement}
-                </div>
-              </div>
-
-              {/* Custom Cohort Answers from Dynamic Form */}
-              {application.customAnswers && Object.keys(application.customAnswers).length > 0 && (
-                <div className="bg-indigo-50/40 p-4 rounded-xl border border-indigo-100 space-y-3">
-                  <div className="font-bold text-indigo-950 uppercase tracking-wider text-[11px]">
-                    Application Form Responses
-                  </div>
-                  {Object.entries(application.customAnswers).map(([key, val]) => (
-                    <div key={key} className="space-y-1">
-                      <span className="text-[10px] text-indigo-800 font-semibold">{key}:</span>
-                      <p className="text-slate-800 bg-white p-2.5 rounded-lg border border-slate-200">
-                        {Array.isArray(val) ? val.join(', ') : String(val)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Uploaded Documents with Verification Controls */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-                    Uploaded Documents & Verification
-                  </div>
-                  <span className="text-[10px] text-slate-500">
-                    {application.uploadedFiles ? Object.keys(application.uploadedFiles).length : 0} files attached
-                  </span>
-                </div>
-
-                {application.uploadedFiles && Object.keys(application.uploadedFiles).length > 0 ? (
-                  <div className="space-y-3">
-                    {Object.entries(application.uploadedFiles).map(([fieldId, file]) => {
-                      const fileRecord = file as UploadedFileRecord;
-                      const isVerified = fileRecord.verificationStatus === 'verified';
-                      const isRejected = fileRecord.verificationStatus === 'rejected';
-
-                      return (
-                        <div key={fieldId} className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">{fieldId}</span>
-                              <div className="font-bold text-slate-900 flex items-center space-x-1.5 mt-0.5">
-                                <span>📎 {fileRecord.fileName}</span>
-                                <span className="text-[10px] text-slate-400 font-normal">({fileRecord.fileSizeMb} MB)</span>
-                              </div>
-                            </div>
-
-                            {/* Status badge */}
-                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                              isVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                              isRejected ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                              'bg-amber-50 text-amber-700 border-amber-200'
-                            }`}>
-                              {fileRecord.verificationStatus ? fileRecord.verificationStatus.toUpperCase() : 'PENDING REVIEW'}
-                            </span>
-                          </div>
-
-                          {fileRecord.verificationNote && (
-                            <div className="text-[11px] bg-slate-50 p-2 rounded border border-slate-200 text-slate-600">
-                              <strong>Note:</strong> {fileRecord.verificationNote}
-                            </div>
-                          )}
-
-                          {/* Action Buttons */}
-                          <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
-                            {fileRecord.fileUrl ? (
-                              <a
-                                href={fileRecord.fileUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center space-x-1 text-indigo-600 hover:text-indigo-800 font-semibold"
-                              >
-                                <FileText className="w-3.5 h-3.5" />
-                                <span>View Document</span>
-                              </a>
-                            ) : (
-                              <span className="text-slate-400">File uploaded</span>
-                            )}
-
-                            <div className="flex items-center space-x-1.5">
-                              <button
-                                onClick={() => updateDocumentVerification(application.id, fieldId, 'verified', 'Verified by ' + currentUser.name)}
-                                className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition cursor-pointer ${
-                                  isVerified ? 'bg-emerald-600 text-white' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
-                                }`}
-                              >
-                                ✓ Verify
-                              </button>
-                              <button
-                                onClick={() => updateDocumentVerification(application.id, fieldId, 'rejected', 'Document illegible or missing key requirements')}
-                                className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition cursor-pointer ${
-                                  isRejected ? 'bg-rose-600 text-white' : 'bg-rose-50 hover:bg-rose-100 text-rose-700'
-                                }`}
-                              >
-                                ✕ Reject
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500 italic p-3 bg-white rounded-lg border border-dashed border-slate-200">
-                    No documents attached to this application.
-                  </p>
-                )}
-              </div>
-
-              {/* Profiles & Links */}
-              <div className="flex flex-wrap gap-2 pt-2">
-                {application.linkedinUrl && (
-                  <a
-                    href={application.linkedinUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-lg transition"
-                  >
-                    <Linkedin className="w-3.5 h-3.5 text-blue-600" />
-                    <span>LinkedIn Profile</span>
-                  </a>
-                )}
-                {application.githubUrl && (
-                  <a
-                    href={application.githubUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-lg transition"
-                  >
-                    <Github className="w-3.5 h-3.5 text-slate-900" />
-                    <span>GitHub Code</span>
-                  </a>
-                )}
-                {application.portfolioUrl && (
-                  <a
-                    href={application.portfolioUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1.5 rounded-lg transition"
-                  >
-                    <Globe className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Portfolio Website</span>
-                  </a>
-                )}
-              </div>
-            </div>
+          {/* TAB 1: Submitted Application Form */}
+          {activeTab === 'form' && (
+            <SubmittedApplicationFormView
+              application={application}
+              publishedForm={publishedForm}
+              isManagerView={true}
+              onVerifyDocument={updateDocumentVerification}
+            />
           )}
 
           {/* TAB 2: Internal Notes */}

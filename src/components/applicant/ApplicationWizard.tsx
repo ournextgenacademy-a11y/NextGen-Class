@@ -844,7 +844,7 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">Standard Intake Criteria</h3>
                   <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-                    Standard admissions profile loaded. Proceed to review and verify your application dossier.
+                    Standard admissions profile loaded. Proceed to review and verify your application form.
                   </p>
                 </div>
               </div>
@@ -857,7 +857,7 @@ export const ApplicationWizard: React.FC<ApplicationWizardProps> = ({
           <div className="p-6 space-y-6">
             <div className="pb-4 border-b border-slate-100">
               <h2 className="text-base font-bold text-slate-900">
-                3. Review Application Dossier & Submit
+                3. Review Application Form & Submit
               </h2>
               <p className="text-xs text-slate-600 mt-1">
                 Please double-check your provided details and attachments before officially submitting to the NextGen Admissions Board.

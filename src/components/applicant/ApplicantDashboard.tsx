@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { AdmissionOfferModal } from './AdmissionOfferModal';
 import { AssessmentRunner } from './AssessmentRunner';
+import { SubmittedApplicationFormView } from '../common/SubmittedApplicationFormView';
 
 interface ApplicantDashboardProps {
   onStartNewApplication: () => void;
@@ -51,7 +52,8 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
     deleteDraftApplication,
     setActivePortal, 
     setApplicantTab,
-    addToast
+    addToast,
+    getPublishedFormForProgramme
   } = useApp();
 
   // Strict User Isolation: Filter ONLY applications belonging to this applicant
@@ -64,13 +66,14 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
     myApplications[0]?.id || ''
   );
   const [showOfferModal, setShowOfferModal] = useState(false);
-  const [showViewDossierModal, setShowViewDossierModal] = useState(false);
+  const [showViewFormModal, setShowViewFormModal] = useState(false);
   const [takingAssessmentApp, setTakingAssessmentApp] = useState<Application | null>(null);
 
   // Active Selected Application
   const activeApp = myApplications.find(a => a.id === (selectedAppId || myApplications[0]?.id)) || myApplications[0];
   const activeProg = programs.find(p => p.id === activeApp?.programId);
   const activeCohort = cohorts.find(c => c.id === activeApp?.cohortId);
+  const publishedForm = getPublishedFormForProgramme(activeApp?.programId, activeApp?.cohortId);
   const activeAssessment = assessments.find(a => a.id === activeCohort?.assessmentId) || 
     assessments.find(a => a.programId === activeApp?.programId) || 
     assessments[0];
@@ -167,7 +170,7 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
   const currentStage = activeApp ? getStageIndex(activeApp.status) : 0;
 
   const stages = [
-    { num: 1, title: 'Submission', desc: 'Dossier locked' },
+    { num: 1, title: 'Submission', desc: 'Application form submitted' },
     { num: 2, title: 'Faculty Review', desc: 'Eligibility check' },
     { num: 3, title: 'Assessment', desc: 'Technical & logic test' },
     { num: 4, title: 'Admitted', desc: 'Offer & scholarship' },
@@ -539,7 +542,7 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
                         <span>Action Required: Official Admission Offer Ready</span>
                       </div>
                       <h4 className="text-base font-bold text-zinc-900 mt-1">
-                        Congratulations! NextGen Admissions Board has accepted your dossier.
+                        Congratulations! NextGen Admissions Board has accepted your application.
                       </h4>
                       <p className="text-xs text-zinc-600 mt-1 max-w-xl">
                         You have been awarded a <strong>{activeApp.scholarshipPercentage || 100}% Scholarship</strong>. Review the official admission terms and lock your seat before the enrollment cutoff.
@@ -570,22 +573,18 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
                         Enrollment Confirmed & Seat Locked
                       </div>
                       <h4 className="text-base font-bold text-zinc-900 mt-1">
-                        You are an official NextGen Learner in {activeCohort?.name}!
+                        Onboarding for learners will commence soon
                       </h4>
                       <p className="text-xs text-zinc-600 mt-1">
-                        Access your cohort schedule, live class links, assignments, and capstone milestones in the Learner Hub.
+                        Your admission offer for {activeCohort?.name} has been officially locked and recorded. You do not need to take any further action at this time.
                       </p>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setActivePortal('learner')}
-                    className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-xs transition cursor-pointer"
-                  >
-                    <span>Open Learner Hub</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                  <div className="inline-flex items-center space-x-2 bg-emerald-600 text-white font-bold text-xs px-5 py-3 rounded-xl shadow-xs">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Onboarding for learners will commence soon</span>
+                  </div>
                 </div>
               )}
 
@@ -647,11 +646,11 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
-                      onClick={() => setShowViewDossierModal(true)}
+                      onClick={() => setShowViewFormModal(true)}
                       className="flex items-center space-x-1.5 text-xs font-semibold text-zinc-800 hover:text-zinc-900 bg-white hover:bg-zinc-100 px-4 py-2.5 rounded-xl border border-zinc-300 transition cursor-pointer shadow-2xs"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      <span>View Submitted Dossier</span>
+                      <span>View Submitted Application Form</span>
                     </button>
                     <button
                       type="button"
@@ -809,10 +808,11 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
                   <span>Timeline & Admissions Audit Log</span>
                   <button
                     type="button"
-                    onClick={() => setShowViewDossierModal(true)}
-                    className="text-[11px] text-orange-600 hover:underline font-semibold cursor-pointer"
+                    onClick={() => setShowViewFormModal(true)}
+                    className="text-[11px] text-orange-600 hover:underline font-semibold cursor-pointer flex items-center space-x-1"
                   >
-                    View Submitted Dossier
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>View Submitted Application Form</span>
                   </button>
                 </div>
                 <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3 max-h-56 overflow-y-auto text-xs">
@@ -848,7 +848,7 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
               No Active Applications Found
             </h3>
             <p className="text-xs text-zinc-500 max-w-md mx-auto mt-1">
-              You haven't submitted an application yet. Explore our open programmes and cohorts to submit your candidate dossier.
+              You haven't submitted an application yet. Explore our open programmes and cohorts to submit your application form.
             </p>
           </div>
           <button
@@ -862,155 +862,41 @@ export const ApplicantDashboard: React.FC<ApplicantDashboardProps> = ({
         </div>
       )}
 
-      {/* View Submitted Dossier Modal (Read-Only) */}
-      {showViewDossierModal && activeApp && (
+      {/* View Submitted Application Form Modal (Read-Only) */}
+      {showViewFormModal && activeApp && (
         <div className="fixed inset-0 bg-zinc-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-zinc-200">
             <div className="p-5 bg-zinc-900 text-white flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Lock className="w-4 h-4 text-orange-400" />
+                <FileText className="w-4 h-4 text-orange-400" />
                 <h3 className="text-base font-bold font-['Space_Grotesk']">
-                  Submitted Candidate Dossier #{activeApp.id}
+                  Submitted Application Form #{activeApp.id}
                 </h3>
               </div>
               <button
                 type="button"
-                onClick={() => setShowViewDossierModal(false)}
-                className="p-1.5 text-zinc-400 hover:text-white rounded-lg transition"
+                onClick={() => setShowViewFormModal(false)}
+                className="p-1.5 text-zinc-400 hover:text-white rounded-lg transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6 text-xs text-zinc-800">
-              {/* Program & Status */}
-              <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-zinc-500">Track & Cohort</div>
-                  <div className="text-sm font-bold text-zinc-900">{activeProg?.name} • {activeCohort?.name}</div>
-                  <div className="text-zinc-500 text-[11px] mt-0.5">Applied: {activeApp.appliedDate}</div>
-                </div>
-                <div>{renderStatusBadge(activeApp.status)}</div>
-              </div>
-
-              {/* Personal Details */}
-              <div className="space-y-2">
-                <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                  Personal & Academic Details
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Name</span>
-                    <div className="font-medium text-zinc-900">{activeApp.fullName}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Email</span>
-                    <div className="font-medium text-zinc-900">{activeApp.email}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Phone</span>
-                    <div className="font-medium text-zinc-900">{activeApp.phone}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Location</span>
-                    <div className="font-medium text-zinc-900">{activeApp.city}, {activeApp.country}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Education</span>
-                    <div className="font-medium text-zinc-900">{activeApp.educationLevel}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Discipline</span>
-                    <div className="font-medium text-zinc-900">{activeApp.fieldOfStudy}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Experience</span>
-                    <div className="font-medium text-zinc-900">{activeApp.yearsExperience}</div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Employment</span>
-                    <div className="font-medium text-zinc-900">{activeApp.employmentStatus}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Motivation & Vision */}
-              <div className="space-y-2">
-                <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                  Motivation & Vision Statements
-                </div>
-                <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3">
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Why NextGen Academy:</span>
-                    <p className="text-zinc-800 mt-1 leading-relaxed">{activeApp.motivationStatement}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Career Goals:</span>
-                    <p className="text-zinc-800 mt-1 leading-relaxed">{activeApp.goalsStatement}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dynamic Form Responses */}
-              {activeApp.customAnswers && Object.keys(activeApp.customAnswers).length > 0 && (
-                <div className="space-y-2">
-                  <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                    Custom Dynamic Form Answers
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
-                    {Object.entries(activeApp.customAnswers).map(([k, val]) => (
-                      <div key={k} className="bg-white p-3 rounded-lg border border-zinc-200">
-                        <div className="text-[10px] text-zinc-500 font-semibold">{k}</div>
-                        <div className="font-medium text-zinc-900 mt-0.5">
-                          {Array.isArray(val) ? val.join(', ') : String(val)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Uploaded Documents */}
-              {activeApp.uploadedFiles && Object.keys(activeApp.uploadedFiles).length > 0 && (
-                <div className="space-y-2">
-                  <div className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                    Attached Documents
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
-                    {Object.entries(activeApp.uploadedFiles).map(([k, file]) => {
-                      const fileRecord = file as UploadedFileRecord;
-                      return (
-                        <div key={k} className="bg-white p-3 rounded-lg border border-zinc-200 flex items-center justify-between">
-                          <div className="truncate">
-                            <div className="text-[10px] text-zinc-500 font-semibold truncate">{k}</div>
-                            <div className="font-bold text-zinc-900 truncate">📎 {fileRecord.fileName}</div>
-                            <div className="text-[10px] text-zinc-400">{fileRecord.fileSizeMb} MB</div>
-                          </div>
-                          {fileRecord.fileUrl && (
-                            <a
-                              href={fileRecord.fileUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg shrink-0"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </a>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              <SubmittedApplicationFormView
+                application={activeApp}
+                publishedForm={publishedForm}
+                isManagerView={false}
+              />
             </div>
 
             <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex justify-end">
               <button
                 type="button"
-                onClick={() => setShowViewDossierModal(false)}
+                onClick={() => setShowViewFormModal(false)}
                 className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl cursor-pointer"
               >
-                Close Dossier
+                Close
               </button>
             </div>
           </div>

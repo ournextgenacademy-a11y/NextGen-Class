@@ -28,7 +28,8 @@ import {
   Lock,
   Eye,
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  GraduationCap
 } from 'lucide-react';
 
 export const ApplicantAssessmentsTab: React.FC = () => {
@@ -248,8 +249,8 @@ export const ApplicantAssessmentsTab: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* RULE 2: Awaiting Manager Approval to Move to Assessment Pending */}
-          {!isAssessmentAuthorized && (
+          {/* Dynamic Phase Status Banner according to Program Portal application status */}
+          {!isAssessmentAuthorized ? (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-start space-x-3.5">
                 <div className="p-2.5 bg-amber-100 rounded-xl text-amber-700 shrink-0 mt-0.5">
@@ -269,7 +270,67 @@ export const ApplicantAssessmentsTab: React.FC = () => {
                 <span>Current Status: {activeApp?.status.replace('_', ' ').toUpperCase()}</span>
               </div>
             </div>
-          )}
+          ) : (activeApp?.status === 'assessment_pending' || activeApp?.status === 'assessment_invited') && !hasTaken ? (
+            <div className="bg-orange-50/80 border border-orange-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start space-x-3.5">
+                <div className="p-2.5 bg-orange-100 rounded-xl text-orange-700 shrink-0 mt-0.5">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-orange-950">
+                    Assessment Phase Unlocked: Assessment Pending
+                  </h4>
+                  <p className="text-xs text-orange-800 mt-1 leading-relaxed">
+                    Your application form has been reviewed and moved to <strong>Assessment Pending</strong>. You are authorized to take the screening assessment before the cohort deadline.
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 bg-white border border-orange-300 text-orange-900 text-xs font-bold px-4 py-2 rounded-xl flex items-center space-x-1.5 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-orange-600" />
+                <span>Current Status: ASSESSMENT PENDING</span>
+              </div>
+            </div>
+          ) : activeApp?.status === 'assessment_completed' || hasTaken ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start space-x-3.5">
+                <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 shrink-0 mt-0.5">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-950">
+                    Assessment Phase Completed: Score Recorded ({activeApp?.assessmentScore || 90}%)
+                  </h4>
+                  <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                    Your screening evaluation has been successfully submitted and locked. The admissions board is completing holistic evaluation and scholarship allocation.
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 bg-white border border-emerald-300 text-emerald-900 text-xs font-bold px-4 py-2 rounded-xl flex items-center space-x-1.5 shadow-2xs">
+                <Award className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Current Status: ASSESSMENT COMPLETED</span>
+              </div>
+            </div>
+          ) : activeApp?.status === 'enrolled' ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start space-x-3.5">
+                <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-700 shrink-0 mt-0.5">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-950">
+                    Enrollment Confirmed: Onboarding for learners will commence soon
+                  </h4>
+                  <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                    Your admission offer has been formally accepted for {activeCohort?.name}. Onboarding for learners will commence soon.
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center space-x-1.5 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                <span>Onboarding for learners will commence soon</span>
+              </div>
+            </div>
+          ) : null}
 
           {/* Main Grid: Left Assessment Selection & Details, Right Resources Panel */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

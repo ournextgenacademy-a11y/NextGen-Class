@@ -322,7 +322,7 @@ const MainLayout: React.FC = () => {
                   { id: 'dashboard', label: 'My Applications & Status' },
                   { id: 'explore', label: 'Explore Programmes' },
                   { id: 'assessments', label: 'Assessments & Resources' },
-                  { id: 'apply', label: 'Application Dossier' },
+                  { id: 'apply', label: 'Application Form' },
                   { id: 'inbox', label: 'Notices & Messages' },
                 ].map((item) => (
                   <button

@@ -755,7 +755,7 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
                           onClick={() => setActiveDrawerAppId(app.id)}
                           className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition cursor-pointer"
                         >
-                          Review Dossier
+                          Review Application
                         </button>
                       </td>
                     </tr>
@@ -766,7 +766,7 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
                   <tr>
                     <td colSpan={8} className="p-12 text-center text-slate-500">
                       <FolderOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                      <p className="font-semibold text-slate-700">No applicant dossiers match current filters.</p>
+                      <p className="font-semibold text-slate-700">No applications match current filters.</p>
                       <p className="text-xs text-slate-400 mt-1">Try broadening your search or resetting filters.</p>
                     </td>
                   </tr>
@@ -916,7 +916,7 @@ export const ApplicationPipeline: React.FC<ApplicationPipelineProps> = ({
               <div className="flex items-center space-x-2">
                 <Sparkles className="w-4 h-4 text-indigo-400" />
                 <h3 className="font-bold font-['Space_Grotesk'] text-base">
-                  Generate Test Application Dossier
+                  Generate Test Application
                 </h3>
               </div>
               <button

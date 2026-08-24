@@ -616,7 +616,7 @@ export const AssessmentRunner: React.FC<AssessmentRunnerProps> = ({
             {completedResult.passed ? 'Screening Evaluation Passed' : 'Evaluation Completed & Under Review'}
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
-            Your answers have been evaluated. Your dossier has been updated and faculty admissions review is underway.
+            Your answers have been evaluated. Your application form and test scores have been updated and faculty admissions review is underway.
           </p>
         </div>
 
