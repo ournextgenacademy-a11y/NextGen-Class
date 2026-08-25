@@ -5,6 +5,7 @@ import {
   filterApplications,
   exportApplicationsToCSV,
   exportApplicationsToXLSX,
+  exportApplicationsToPDF,
   MneFilters,
   MetricCalculationTrace
 } from '../../utils/mneMetrics';
@@ -120,6 +121,28 @@ export const MneReportingView: React.FC = () => {
     }
   };
 
+  // Handler for exporting PDF report
+  const handleExportPDF = () => {
+    try {
+      const selectedProgName = programs.find(p => p.id === filters.programId)?.name || 'All Programmes';
+      const selectedCohName = cohorts.find(c => c.id === filters.cohortId)?.name || 'All Cohorts';
+      const summaryStr = `Programme: ${selectedProgName} | Cohort: ${selectedCohName} | Status: ${filters.status} | Date Range: ${filters.dateRange.preset}`;
+
+      exportApplicationsToPDF(filteredApps, metrics, programs, cohorts, summaryStr);
+      addToast({
+        title: 'PDF Report Export Complete',
+        message: `Downloaded M&E telemetry summary report in PDF format.`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      addToast({
+        title: 'PDF Export Failed',
+        message: err.message || 'Could not generate PDF document.',
+        type: 'error',
+      });
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -197,6 +220,16 @@ export const MneReportingView: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* PDF Export */}
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center space-x-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm shadow-rose-600/20 transition cursor-pointer"
+            title="Download formatted M&E telemetry summary report in PDF format"
+          >
+            <FileText className="w-4 h-4 text-rose-100" />
+            <span>Export PDF</span>
+          </button>
+
           {/* CSV Export */}
           <button
             onClick={handleExportCSV}

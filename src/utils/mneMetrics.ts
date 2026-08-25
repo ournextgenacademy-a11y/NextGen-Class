@@ -1,5 +1,7 @@
 import { Application, Cohort, Program, Assessment, AssessmentSubmission } from '../types';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export interface DateRangeFilter {
   preset: 'all' | '7d' | '30d' | '90d' | 'ytd' | 'custom';
@@ -834,4 +836,164 @@ export function exportApplicationsToXLSX(
 
   // Write file
   XLSX.writeFile(workbook, `NextGen_M&E_Application_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+/**
+ * Generates and downloads a comprehensive, multi-page professional PDF report of the M&E telemetry data
+ */
+export function exportApplicationsToPDF(
+  applications: Application[],
+  metrics: MneReportMetrics,
+  programs: Program[] = [],
+  cohorts: Cohort[] = [],
+  filtersSummary?: string
+): void {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const getProgName = (id: string) => programs.find(p => p.id === id)?.name || id;
+  const getCohName = (id: string) => cohorts.find(c => c.id === id)?.name || id;
+  const generatedAt = new Date().toLocaleString();
+
+  // Header Banner
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(0, 0, 210, 26, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text('NEXTGEN ACADEMY', 14, 10);
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(249, 115, 22); // orange-500
+  doc.text('Monitoring, Evaluation & Admissions Telemetry Report', 14, 16);
+
+  doc.setFontSize(7);
+  doc.setTextColor(203, 213, 225); // slate-300
+  doc.text(`Generated: ${generatedAt}  |  Scope: ${filtersSummary || 'All Applications Dataset'}`, 14, 22);
+
+  let currentY = 32;
+
+  // Section 1: Executive KPI & Funnel Summary
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('1. Executive KPI & Funnel Summary', 14, currentY);
+  currentY += 3.5;
+
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Category', 'Indicator / Metric', 'Value', 'Context / Benchmark']],
+    body: [
+      ['Applications Funnel', 'Total Candidates in Scope', `${metrics.totalApplicants}`, 'Total registered candidate records'],
+      ['Applications Funnel', 'Completed / Submitted', `${metrics.submittedApplications}`, `${metrics.applicationCompletionRate}% completion rate`],
+      ['Applications Funnel', 'Draft / Incomplete', `${metrics.draftApplications}`, 'Candidates in progress'],
+      ['Assessment Screening', 'Assessment Eligible & Completed', `${metrics.assessmentCompleted} / ${metrics.assessmentEligible}`, `${metrics.assessmentCompletionRate}% completion rate`],
+      ['Assessment Screening', 'Average Score', `${metrics.averageScore}%`, `Benchmark passing threshold: ${metrics.passingScoreThreshold}%`],
+      ['Assessment Screening', 'Passed Candidates (>= Pass Mark)', `${metrics.passedCount}`, `${metrics.passRate}% pass rate`],
+      ['Admissions & Enrollment', 'Accepted / Admitted', `${metrics.acceptedCount}`, `${metrics.acceptanceRate}% acceptance rate of submitted`],
+      ['Admissions & Enrollment', 'Enrolled in Cohort', `${metrics.enrolledCount}`, 'Confirmed active learners'],
+      ['Admissions & Enrollment', 'Scholarships Awarded', `${metrics.scholarshipsAwardedCount}`, `Total value: $${metrics.scholarshipsTotalValue.toLocaleString()}`],
+      ['Demographics & Diversity', 'Female Participation Share', `${metrics.gender.femalePercentage}%`, `${metrics.gender.female} Female candidate records`],
+      ['Demographics & Diversity', 'Pan-African Geographic Reach', `${metrics.location.totalCountries} Countries`, `Top country: ${metrics.location.countries[0]?.label || 'Pan-African'}`],
+    ],
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 1.8, textColor: [51, 65, 85] },
+    headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 42 },
+      1: { fontStyle: 'bold', cellWidth: 55 },
+      2: { cellWidth: 32, fontStyle: 'bold', halign: 'center' },
+      3: { cellWidth: 53 },
+    },
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 7;
+
+  // Section 2: Demographic & Diversity Breakdown
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('2. Demographic & Diversity Analysis', 14, currentY);
+  currentY += 3.5;
+
+  const genderRows = metrics.gender.breakdown.map(g => ['Gender', g.label, `${g.count}`, `${g.percentage}%`]);
+  const countryRows = metrics.location.countries.slice(0, 6).map(c => ['Country', c.label, `${c.count}`, `${c.percentage}%`]);
+  const eduRows = metrics.education.breakdown.slice(0, 4).map(e => ['Education Level', e.label, `${e.count}`, `${e.percentage}%`]);
+  const empRows = metrics.employment.breakdown.slice(0, 4).map(em => ['Employment Status', em.label, `${em.count}`, `${em.percentage}%`]);
+
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Category', 'Demographic Group / Segment', 'Count', 'Percentage Share']],
+    body: [...genderRows, ...countryRows, ...eduRows, ...empRows],
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 1.6, textColor: [51, 65, 85] },
+    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 38 },
+      1: { cellWidth: 78 },
+      2: { cellWidth: 30, halign: 'center' },
+      3: { cellWidth: 36, fontStyle: 'bold', halign: 'center' },
+    },
+  });
+
+  // Section 3: Evaluated Candidate Records
+  doc.addPage();
+  currentY = 16;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`3. Evaluated Candidate Roster (${applications.length} Records in Active Scope)`, 14, currentY);
+  currentY += 3.5;
+
+  const appRows = applications.slice(0, 50).map(app => [
+    app.id,
+    app.fullName || 'Unnamed',
+    getProgName(app.programId),
+    getCohName(app.cohortId),
+    app.status.replace(/_/g, ' ').toUpperCase(),
+    app.country || 'N/A',
+    app.gender || 'N/A',
+    app.assessmentScore !== undefined ? `${app.assessmentScore}%` : 'N/A',
+    app.scholarshipAwarded ? 'Yes' : 'No',
+  ]);
+
+  autoTable(doc, {
+    startY: currentY,
+    head: [['App ID', 'Candidate Name', 'Programme', 'Cohort', 'Status', 'Country', 'Gender', 'Score', 'Schol.']],
+    body: appRows,
+    theme: 'grid',
+    styles: { fontSize: 6.5, cellPadding: 1.5, textColor: [51, 65, 85] },
+    headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 20, fontStyle: 'bold' },
+      1: { cellWidth: 32 },
+      2: { cellWidth: 32 },
+      3: { cellWidth: 28 },
+      4: { cellWidth: 24, fontStyle: 'bold' },
+      5: { cellWidth: 16 },
+      6: { cellWidth: 14 },
+      7: { cellWidth: 12, halign: 'center' },
+      8: { cellWidth: 10, halign: 'center' },
+    },
+  });
+
+  // Page Numbers & Footer
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `NextGen Academy Admissions & M&E Telemetry Report • Page ${i} of ${pageCount} • Confidential`,
+      105,
+      290,
+      { align: 'center' }
+    );
+  }
+
+  doc.save(`NextGen_M&E_Report_${new Date().toISOString().split('T')[0]}.pdf`);
 }

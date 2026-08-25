@@ -76,8 +76,8 @@ export const ProgramCohortManager: React.FC = () => {
     format: '100% Online' as '100% Online' | 'Hybrid' | 'In-Person Intensive',
     status: 'active' as ProgramStatus,
     targetAudience: '',
-    skillsTaught: 'Generative AI, LLMs, Automation, Prompt Systems',
-    prerequisites: 'Basic programming knowledge, Problem-solving interest',
+    skillsTaught: '',
+    prerequisites: '',
     icon: 'Sparkles',
     color: 'from-purple-600 to-indigo-600',
   });
@@ -125,9 +125,9 @@ export const ProgramCohortManager: React.FC = () => {
       durationWeeks: 12,
       format: '100% Online',
       status: 'active',
-      targetAudience: 'Tech professionals, developers, and automation specialists',
-      skillsTaught: 'Generative AI, Prompt Engineering, Agentic Workflows, API Automation',
-      prerequisites: 'Basic Python scripting, interest in modern AI tools',
+      targetAudience: '',
+      skillsTaught: '',
+      prerequisites: '',
       icon: 'Sparkles',
       color: 'from-indigo-600 to-purple-600',
     });
@@ -1011,24 +1011,30 @@ export const ProgramCohortManager: React.FC = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
                   <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Skills Curriculum</span>
                   <div className="flex flex-wrap gap-1.5 mt-1">
-                    {viewingProgram.skillsTaught?.map((s, idx) => (
-                      <span key={idx} className="bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] font-medium text-slate-700">
-                        {s}
-                      </span>
-                    ))}
+                    {viewingProgram.skillsTaught && viewingProgram.skillsTaught.length > 0 ? (
+                      viewingProgram.skillsTaught.map((s, idx) => (
+                        <span key={idx} className="bg-white border border-slate-200 px-2 py-0.5 rounded-md text-[11px] font-medium text-slate-700">
+                          {s}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-slate-400 text-xs italic">No specific skills listed</span>
+                    )}
                   </div>
                 </div>
 
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Prerequisites</span>
-                  <p className="text-slate-700 text-xs mt-1">
-                    {viewingProgram.prerequisites?.join(', ') || 'No formal prerequisites required.'}
-                  </p>
-                </div>
+                {viewingProgram.prerequisites && viewingProgram.prerequisites.length > 0 && viewingProgram.prerequisites.some(Boolean) ? (
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Prerequisites</span>
+                    <p className="text-slate-700 text-xs mt-1">
+                      {viewingProgram.prerequisites.filter(Boolean).join(', ')}
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
               {/* Linked Cohorts */}

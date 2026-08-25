@@ -280,14 +280,16 @@ export const ProgramDirectory: React.FC<ProgramDirectoryProps> = ({
 
             <div className="text-xs text-zinc-700 space-y-3 leading-relaxed">
               <p>{selectedProgramModal.description}</p>
-              <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-2">
-                <div className="font-bold text-zinc-800">Target Audience & Prerequisites:</div>
-                <ul className="list-disc list-inside text-zinc-600 space-y-1">
-                  {selectedProgramModal.prerequisites.map((req, i) => (
-                    <li key={i}>{req}</li>
-                  ))}
-                </ul>
-              </div>
+              {selectedProgramModal.prerequisites && selectedProgramModal.prerequisites.length > 0 && selectedProgramModal.prerequisites.some(Boolean) && (
+                <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-2">
+                  <div className="font-bold text-zinc-800">Target Audience & Prerequisites:</div>
+                  <ul className="list-disc list-inside text-zinc-600 space-y-1">
+                    {selectedProgramModal.prerequisites.filter(Boolean).map((req, i) => (
+                      <li key={i}>{req}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div>
